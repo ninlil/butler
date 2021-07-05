@@ -1,0 +1,44 @@
+@base=http://localhost:10000
+###
+GET {{base}}
+###
+GET {{base}}/all
+###
+GET {{base}}/item/0
+###
+GET {{base}}/item/99
+Request-Id: dead8008
+###
+POST {{base}}/add
+
+{
+  "title": "test"
+}
+
+###
+GET {{base}}/range?from=0
+###
+GET {{base}}/range?from=1
+###
+GET {{base}}/range?from=2&to=500
+###
+GET {{base}}/range?from=-1
+###
+GET {{base}}/range?from=0&to=0
+Accept: application/yaml
+###
+GET {{base}}/range?from=0&to=0
+Accept: application/xml
+
+###
+GET {{base}}/sleep
+###
+GET {{base}}/readyz
+###
+GET {{base}}/healthyz
+###
+GET {{base}}/sum?a=3&b=0.14
+###
+GET {{base}}/id
+Request-Id: 1234
+Correlation-Id: 5678

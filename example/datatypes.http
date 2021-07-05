@@ -1,0 +1,31 @@
+@base=http://localhost:10000
+###
+GET {{base}}/types
+  ?int=1234
+  &int8=123
+  &int16=1234
+  &int32=1234
+  &int64=1234
+  &string=kalle
+  &float32=31415e-4
+  &float64=.31415e1
+  &bool=true
+  &time=2001-01-01T12:00:43Z
+  &dur=1m5s
+  &bytes=a2FsbGU=
+Accept: application/json;indent=0
+###
+GET {{base}}/types
+  ?int=1234
+  &int8=123
+  &int16=1234
+  &int32=1234
+  &int64=1234
+  &string=kalle
+  &float32=31415e-4
+  &float64=.31415e1
+  &bool=true
+  &time=2001-01-01T12:00:43Z
+  &dur=1m5s
+  &bytes=a2FsbGU=
+Accept: application/xml;indent=2

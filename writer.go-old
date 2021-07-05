@@ -1,0 +1,40 @@
+package butler
+
+import (
+	"bytes"
+	"net/http"
+)
+
+type ResponseWriter struct {
+	w      http.ResponseWriter
+	buf    bytes.Buffer
+	status int
+}
+
+func wrapWriter(w http.ResponseWriter) *ResponseWriter {
+	return &ResponseWriter{
+		w:      w,
+		status: http.StatusOK,
+	}
+}
+
+func (w *ResponseWriter) Header() http.Header {
+	return w.w.Header()
+}
+
+func (w *ResponseWriter) Write(buf []byte) (int, error) {
+	return w.buf.Write(buf)
+}
+
+func (w *ResponseWriter) WriteHeader(status int) {
+	w.status = status
+}
+
+func (w *ResponseWriter) Reset() {
+	w.buf.Reset()
+}
+
+func (w *ResponseWriter) Flush() {
+	w.w.WriteHeader(w.status)
+	_, _ = w.w.Write(w.buf.Bytes())
+}
