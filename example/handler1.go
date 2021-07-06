@@ -7,6 +7,10 @@ import (
 )
 
 type handlerArgs struct {
+	Sum *sumArgs `from:"body"`
+}
+
+type sumArgs struct {
 	A float64 `from:"query" json:"a" required:""`
 	B float64 `from:"query" json:"b" required:""`
 }
@@ -17,8 +21,13 @@ type handlerResult struct {
 
 func handler(ctx context.Context, args *handlerArgs) *handlerResult {
 	log := log.FromCtx(ctx)
-	log.Info().Msgf("handler called with a=%v and b=%v", args.B, args.B)
-	return &handlerResult{
-		Sum: args.A + args.B,
+	if args.Sum != nil {
+		log.Info().Msgf("handler called with a=%v and b=%v", args.Sum.A, args.Sum.B)
+		return &handlerResult{
+			Sum: args.Sum.A + args.Sum.B,
+		}
 	}
+
+	log.Warn().Msg("no data in body")
+	return nil
 }

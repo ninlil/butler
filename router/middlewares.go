@@ -26,7 +26,7 @@ func panicHandler(next http.Handler) http.Handler {
 				if w2, ok := bufferedresponse.Get(w); ok {
 					w2.Reset()
 				}
-				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Msg(fmt.Sprint(err))
+				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Caller(4).Msg(fmt.Sprint(err))
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}()

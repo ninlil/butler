@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type fromSource int
@@ -63,7 +61,7 @@ func parseTag(st reflect.StructTag) *tagInfo {
 
 func (tag *tagInfo) int(f reflect.Value, txt string, force bool) error {
 	v, err := strconv.ParseInt(txt, 0, 0)
-	log.Debug().Msgf("field.int: %s -> %d (%v)", txt, v, err)
+	// log.Debug().Msgf("field.int: %s -> %d (%v)", txt, v, err)
 	if err != nil {
 		return err
 	}
@@ -96,7 +94,7 @@ func (tag *tagInfo) int(f reflect.Value, txt string, force bool) error {
 
 func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 	v, err := strconv.ParseFloat(txt, 0)
-	log.Debug().Msgf("field.float: %s -> %g (%v)", txt, v, err)
+	// log.Debug().Msgf("field.float: %s -> %g (%v)", txt, v, err)
 	if err != nil {
 		return err
 	}
@@ -128,7 +126,7 @@ func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 }
 func (tag *tagInfo) duration(f reflect.Value, txt string, force bool) error {
 	v, err := time.ParseDuration(txt)
-	log.Debug().Msgf("field.duration: %s -> %v (%v)", txt, v, err)
+	// log.Debug().Msgf("field.duration: %s -> %v (%v)", txt, v, err)
 	if err != nil {
 		return err
 	}
@@ -161,7 +159,7 @@ func (tag *tagInfo) duration(f reflect.Value, txt string, force bool) error {
 
 func (tag *tagInfo) bool(f reflect.Value, txt string, _ bool) error {
 	v, err := strconv.ParseBool(txt)
-	log.Debug().Msgf("field.bool: %s -> %t (%v)", txt, v, err)
+	// log.Debug().Msgf("field.bool: %s -> %t (%v)", txt, v, err)
 	if err != nil {
 		return err
 	}
@@ -171,7 +169,7 @@ func (tag *tagInfo) bool(f reflect.Value, txt string, _ bool) error {
 }
 
 func (tag *tagInfo) string(f reflect.Value, txt string, force bool) error {
-	log.Debug().Msgf("field.string: %s", txt)
+	// log.Debug().Msgf("field.string: %s", txt)
 
 	if !force {
 		if tag.HasMin {
@@ -200,7 +198,7 @@ func (tag *tagInfo) string(f reflect.Value, txt string, force bool) error {
 }
 
 func (tag *tagInfo) bytes(f reflect.Value, txt string, force bool) error {
-	log.Debug().Msgf("field.bytes: %s", txt)
+	// log.Debug().Msgf("field.bytes: %s", txt)
 	buf, err := base64.StdEncoding.DecodeString(txt)
 	if err != nil {
 		return err
@@ -234,7 +232,7 @@ func (tag *tagInfo) bytes(f reflect.Value, txt string, force bool) error {
 
 func (tag *tagInfo) time(f reflect.Value, txt string, force bool) error {
 	v, err := parseTime(txt)
-	log.Debug().Msgf("field.float: %s -> %v (%v)", txt, v, err)
+	// log.Debug().Msgf("field.float: %s -> %v (%v)", txt, v, err)
 	if err != nil {
 		return err
 	}

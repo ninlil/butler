@@ -19,15 +19,33 @@ const (
 	ctfXML
 )
 
-func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
+var ctfText = []string{"json", "xml"}
 
-	var indent int64
-	ctf := ctfJSON
-	format := r.Header.Get("Accept")
+// ErrUnmarshal is an error when parsing the request-body according to the "Content-Type" header
+type ErrUnmarshal ctFormat
+
+func (ctf ErrUnmarshal) Error() string {
+	return fmt.Sprintf("unable to parse %s", ctfText[int(ctf)])
+}
+
+func (ctf ctFormat) Unmarshal(buf []byte, dest interface{}) error {
+	switch ctf {
+	case ctfJSON:
+		return json.Unmarshal(buf, dest)
+	case ctfXML:
+		return xml.Unmarshal(buf, dest)
+	}
+	return nil
+}
+
+func getContentTypeFormat(format string) (ctf ctFormat, indent int) {
+	ctf = ctfJSON
+	indent = 0
+
 	if format != "" {
 		media, params, err := mime.ParseMediaType(format)
-		if err == nil {
-			log.Warn().Msgf("Accept-header-error: %v", err)
+		if err != nil {
+			log.Warn().Msgf("Accept/Content-type - error: %v", err)
 		}
 		switch media {
 		case "application/json":
@@ -35,11 +53,18 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 		case "application/xml":
 			ctf = ctfXML
 		}
-		indent, _ = strconv.ParseInt(params["indent"], 0, 0)
+		n, _ := strconv.ParseInt(params["indent"], 0, 0)
+		indent = int(n)
 	}
 	if indent > 10 {
 		indent = 10
 	}
+	return
+}
+
+func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
+
+	ctf, indent := getContentTypeFormat(r.Header.Get("Accept"))
 
 	var ct string
 	var buf []byte

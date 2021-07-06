@@ -117,7 +117,7 @@ func (r *Router) Serve(port int) error {
 	var haveHealty bool
 
 	for _, route := range r.routes {
-		log.Debug().Msgf("adding %s %s", route.Method, route.Path)
+		// log.Trace().Msgf("adding %s %s", route.Method, route.Path)
 		h := r.router.NewRoute().Name(route.Name)
 
 		if route.Method != All {
@@ -154,11 +154,11 @@ func (r *Router) Serve(port int) error {
 	}
 
 	if !haveReady {
-		log.Debug().Msg("adding /readyz")
+		// log.Trace().Msg("adding /readyz")
 		r.router.NewRoute().Name("readyz").Methods("GET").Path("/readyz").HandlerFunc(readyProbe)
 	}
 	if !haveHealty {
-		log.Debug().Msg("adding /healtyz")
+		// log.Trace().Msg("adding /healtyz")
 		r.router.NewRoute().Name("healthyz").Methods("GET").Path("/healthyz").HandlerFunc(healthyProbe)
 	}
 
@@ -214,6 +214,8 @@ func (rt *Route) writeError(err error, w http.ResponseWriter, r *http.Request, c
 }
 
 func (rt *Route) wrap(w http.ResponseWriter, r *http.Request) {
+	log := log.FromCtx(r.Context())
+
 	args, err := rt.createArgs(w, r)
 	if err != nil {
 		log.Error().Msg(err.Error())
@@ -221,36 +223,29 @@ func (rt *Route) wrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Debug().Msgf("wrap - calling...")
+	// log.Trace().Msgf("wrap - calling...")
 	results := rt.fnValue.Call(args)
-	log.Debug().Msgf("wrap - result: %d values", len(results))
+	// log.Trace().Msgf("wrap - result: %d values", len(results))
 
 	var status int
 	var data interface{}
 
-	for i, res := range results {
+	for _, res := range results {
 		if res.CanInterface() {
 			o := res.Interface()
-			// if res.Type().Implements(tError) {
-			// 	if o != nil {
-			// 		err = o.(error)
-			// 	}
-			// 	log.Printf("#%d= error  = %v", i, err)
-			// } else {
 			switch v := o.(type) {
 			case error:
 				err = v
-				log.Debug().Msgf("#%d: error  = %v", i, err)
+				// log.Debug().Msgf("#%d: error  = %v", i, err)
 			case int:
 				status = v
-				log.Debug().Msgf("#%d: status = %+v", i, status)
+				// log.Debug().Msgf("#%d: status = %+v", i, status)
 			default:
 				if v != nil { // this stop nil-error to be parsed as data
 					data = v
 				}
-				log.Debug().Msgf("#%d: data   = %+v", i, data)
+				// log.Debug().Msgf("#%d: data   = %+v", i, data)
 			}
-			// }
 		}
 	}
 

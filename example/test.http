@@ -37,7 +37,13 @@ GET {{base}}/readyz
 ###
 GET {{base}}/healthyz
 ###
-GET {{base}}/sum?a=3&b=0.14
+GET {{base}}/sum
+Content-Type: application/xml
+
+{
+  "a": 3,
+  "b": 0.14
+}
 ###
 GET {{base}}/id
 Request-Id: 1234
