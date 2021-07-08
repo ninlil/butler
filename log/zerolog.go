@@ -27,6 +27,12 @@ func FromCtx(ctx context.Context) *zerolog.Logger {
 	return log.Ctx(ctx)
 }
 
+// WithContext adds the default logger to the specified context
+func WithContext(ctx context.Context) context.Context {
+	log := log.Logger.With().Logger()
+	return log.WithContext(ctx)
+}
+
 // Trace starts a new log-event with the 'trace'-level
 func Trace() *zerolog.Event {
 	return log.Trace()

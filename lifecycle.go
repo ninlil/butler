@@ -8,19 +8,10 @@ import (
 	"syscall"
 
 	"github.com/ninlil/butler/log"
+	"github.com/ninlil/butler/router"
+	"github.com/ninlil/butler/runtime"
+	"github.com/ninlil/butler/workers"
 )
-
-var (
-	cleanups map[string]func()
-)
-
-// OnClose registers a function to be called on butler-close/shutdown
-func OnClose(name string, h func()) {
-	if cleanups == nil {
-		cleanups = make(map[string]func())
-	}
-	cleanups[name] = h
-}
 
 // Cleanup should be called using 'defer butler.Cleanup(myFunc|nil)' in your main package
 func Cleanup(h func(ctx context.Context)) {
@@ -38,18 +29,36 @@ var (
 //
 // Normal stop-signals is SIGINT and SIGTERM allowing for a graceful close/shutdown
 func Run() {
+
+	if workers.OnDone == workers.ReadyOnDone {
+		router.Ready = false
+	}
+
+	workersDone := workers.StartPending()
+
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		sig := <-sigs
 		log.Debug().Msgf("!! Signal = %s", sig)
 
-		for name, cleanup := range cleanups {
-			log.Debug().Msgf("-- cleanup %s", name)
-			cleanup()
-		}
+		runtime.Close()
 		done <- true
 	}()
+
+	if workersDone != nil {
+		go func() {
+			onDone := <-workersDone
+			switch onDone {
+			case workers.ExitOnDone:
+				sigs <- syscall.SIGQUIT
+			case workers.ContinueOnDone:
+				// nothing to do
+			case workers.ReadyOnDone:
+				router.Ready = true
+			}
+		}()
+	}
 
 	log.Debug().Msg("awaiting signal")
 	<-done

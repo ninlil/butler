@@ -9,8 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
-	"github.com/ninlil/butler"
 	"github.com/ninlil/butler/log"
+	"github.com/ninlil/butler/runtime"
 )
 
 // Router constants
@@ -162,7 +162,7 @@ func (r *Router) Serve(port int) error {
 		r.router.NewRoute().Name("healthyz").Methods("GET").Path("/healthyz").HandlerFunc(healthyProbe)
 	}
 
-	butler.OnClose("router", r.Shutdown)
+	runtime.OnClose("router", r.Shutdown)
 
 	log.Info().Msgf("listening to port %d", port)
 

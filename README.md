@@ -15,6 +15,8 @@ My definition of a successful microservice, specially in kubernetes is this:
 With all that in mind (and more) I'm building this framework: **the Butler** - _makes life easier_
 
 ## Features
+
+### Router
 - Gracefull shutdown of http-server
 - Liveness and Readyness-probes for Kubernetes
 - Parameter-validation
@@ -29,11 +31,13 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Automatic log-support with json to pipe/stream and pretty-printed to console/tty
 - Automatic `204 'No Content'` on empty result
 
-### planned for future updates
+### Workers
+- Easy job/cronjob (run-then-exit) with health-probes
+- Startup/initialization-phase
+
+### ...planned for future updates
 - Metrics for Prometheus
 - More dataformats (yaml, toml)
-- Easily create jobs (run-then-exit)
-- Setup-phases
 - Regex-validation of parameters
 - Support custom datatypes (ex: UUID)
 - More documentation
@@ -41,6 +45,9 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Easily detect/handle closed/cancelled requests
 
 ## Examples
+- [Misc. router-example](examples/example)
+- [Worker-demo](examples/workers1)
+
 ### HelloWorld
 ```go
 import (
