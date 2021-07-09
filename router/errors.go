@@ -14,6 +14,7 @@ const (
 // Our errors
 var (
 	ErrRouterAlreadyRunning = fmt.Errorf("router is already running")
+	ErrInvalidMatch         = fmt.Errorf("invalid match")
 )
 
 // FieldError is the error-message returned when a parameter (query och path) is invalid
@@ -24,14 +25,29 @@ type FieldError struct {
 }
 
 // Error to act as an 'error'-type
-func (fe FieldError) Error() string {
-	return fmt.Sprintf("field-error on %s '%v': %s", fe.Name, fe.Value, fe.Message)
+func (fe *FieldError) Error() string {
+	return fmt.Sprintf("field-error on '%s': %s", fe.Name, fe.Message)
 }
 
-func newFieldError(name string, v interface{}, msg string) FieldError {
-	return FieldError{
-		Name:    name,
-		Message: msg,
-		Value:   v,
+func newFieldError(err error, name string, v interface{}, msg string) *FieldError {
+	var fe *FieldError
+
+	if err != nil {
+		if fe2, ok := err.(*FieldError); ok {
+			fe = fe2
+		}
 	}
+
+	if fe == nil {
+		fe = new(FieldError)
+	}
+
+	fe.Name = name
+	fe.Value = v
+	fe.Message = msg
+	if fe.Message == "" && err != nil {
+		fe.Message = err.Error()
+	}
+
+	return fe
 }

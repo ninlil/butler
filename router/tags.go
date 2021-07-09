@@ -24,9 +24,11 @@ type tagInfo struct {
 	HasMin     bool
 	HasMax     bool
 	HasDefault bool
+	hasRegex   bool
 	Min        string
 	Max        string
 	Default    string
+	Regex      string
 }
 
 func parseTag(st reflect.StructTag) *tagInfo {
@@ -55,6 +57,7 @@ func parseTag(st reflect.StructTag) *tagInfo {
 	tags.Min, tags.HasMin = st.Lookup("min")
 	tags.Max, tags.HasMax = st.Lookup("max")
 	tags.Default, tags.HasDefault = st.Lookup("default")
+	tags.Regex, tags.hasRegex = st.Lookup("regex")
 
 	return &tags
 }
@@ -73,7 +76,7 @@ func (tag *tagInfo) int(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v < min {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -83,7 +86,7 @@ func (tag *tagInfo) int(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v > max {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}
@@ -106,7 +109,7 @@ func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v < min {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -116,7 +119,7 @@ func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v > max {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}
@@ -138,7 +141,7 @@ func (tag *tagInfo) duration(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v < min {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -148,7 +151,7 @@ func (tag *tagInfo) duration(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v > max {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}
@@ -178,7 +181,7 @@ func (tag *tagInfo) string(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if int64(len(txt)) < min {
-				return newFieldError(tag.Name, txt, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -188,7 +191,7 @@ func (tag *tagInfo) string(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if int64(len(txt)) < max {
-				return newFieldError(tag.Name, txt, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}
@@ -211,7 +214,7 @@ func (tag *tagInfo) bytes(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if int64(len(buf)) < min {
-				return newFieldError(tag.Name, txt, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -221,7 +224,7 @@ func (tag *tagInfo) bytes(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if int64(len(buf)) < max {
-				return newFieldError(tag.Name, txt, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}
@@ -244,7 +247,7 @@ func (tag *tagInfo) time(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v.Before(min) {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgBelowMin, min))
 			}
 		}
 
@@ -254,7 +257,7 @@ func (tag *tagInfo) time(f reflect.Value, txt string, force bool) error {
 				return err
 			}
 			if v.After(max) {
-				return newFieldError(tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
+				return newFieldError(nil, tag.Name, v, fmt.Sprintf(errMsgAboveMax, max))
 			}
 		}
 	}

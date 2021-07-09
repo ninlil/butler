@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 
 	"github.com/gorilla/mux"
+	"github.com/ninlil/butler/log"
 )
 
 type paramData struct {
@@ -17,8 +19,6 @@ type paramData struct {
 	vars  map[string]string
 	query url.Values
 }
-
-// var zero = reflect.Zero(reflect.TypeOf(""))
 
 func (rt *Route) createArgs(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
 	nArgs := rt.fnType.NumIn()
@@ -65,12 +65,10 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 			param.vars = mux.Vars(r)
 		}
 		value, found = param.vars[tags.Name]
-		return
 
 	case fromHeader:
 		value = r.Header.Get(tags.Name)
 		found = value != ""
-		return
 
 	case fromQuery:
 		if param.query == nil {
@@ -81,37 +79,56 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 		if found && len(values) > 0 {
 			value = values[0]
 		}
-		return
 
 	case fromBody:
-		var raw []byte
-		raw, err = ioutil.ReadAll(r.Body)
-		found = err == nil && len(raw) > 0
-
-		if found {
-			var body interface{}
-
-			if f.Kind() == reflect.Struct {
-				body = f.Addr().Interface()
-			} else {
-				body = reflect.New(f.Type().Elem()).Interface()
-			}
-
-			ctf, _ := getContentTypeFormat(r.Header.Get("Content-Type"))
-			err = ctf.Unmarshal(raw, body)
-			if err != nil {
-				return
-			}
-			if f.Kind() == reflect.Ptr {
-				f.Set(reflect.ValueOf(body))
-			}
-		}
-		handled = true
-		return
+		return getBodyValue(f, r)
 
 	default:
 		panic("illegal 'from'")
 	}
+
+	if tags.hasRegex && found {
+		var re *regexp.Regexp
+		re, err = getRegexp(tags.Regex)
+		if err != nil {
+			log := log.FromCtx(r.Context())
+			log.Warn().Msgf("field '%s' has invalid regex '%s': %v", tags.Name, tags.Regex, err)
+			return
+		}
+		log.Debug().Msgf("? regexp-match '%s' with '%s' == %t", value, tags.Regex, re.MatchString(value))
+		if !re.MatchString(value) {
+			err = ErrInvalidMatch
+			return
+		}
+	}
+	return
+}
+
+func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, handled bool, err error) {
+	var raw []byte
+	raw, err = ioutil.ReadAll(r.Body)
+	found = err == nil && len(raw) > 0
+
+	if found {
+		var body interface{}
+
+		if f.Kind() == reflect.Struct {
+			body = f.Addr().Interface()
+		} else {
+			body = reflect.New(f.Type().Elem()).Interface()
+		}
+
+		ctf, _ := getContentTypeFormat(r.Header.Get("Content-Type"))
+		err = ctf.Unmarshal(raw, body)
+		if err != nil {
+			return
+		}
+		if f.Kind() == reflect.Ptr {
+			f.Set(reflect.ValueOf(body))
+		}
+	}
+	handled = true
+	return
 }
 
 func (param *paramData) fillField(i int, r *http.Request) error {
@@ -125,7 +142,10 @@ func (param *paramData) fillField(i int, r *http.Request) error {
 	tags := parseTag(param.dt.Field(i).Tag)
 
 	value, found, handled, err := param.getValue(f, tags, r)
-	if handled {
+	if handled || err != nil {
+		if err != nil {
+			err = newFieldError(err, tags.Name, value, err.Error())
+		}
 		return err
 	}
 
@@ -139,16 +159,13 @@ func (param *paramData) fillField(i int, r *http.Request) error {
 
 	if tags.Required && !found {
 		// TODO
-		return newFieldError(tags.Name, nil, errMsgRequired)
+		return newFieldError(nil, tags.Name, nil, errMsgRequired)
 	}
 
 	if found {
 		err = param.assignField(f, value, isDefault, tags)
 		if err != nil {
-			if _, ok := err.(FieldError); !ok {
-				err = newFieldError(tags.Name, value, err.Error())
-			}
-			return err
+			return newFieldError(err, tags.Name, value, err.Error())
 		}
 	}
 
@@ -187,7 +204,7 @@ func (param *paramData) assignField(f reflect.Value, value string, isDefault boo
 		}
 
 	default:
-		return newFieldError(tags.Name, value, fmt.Sprintf(errMsgUnknownType, f.Kind()))
+		return newFieldError(nil, tags.Name, value, fmt.Sprintf(errMsgUnknownType, f.Kind()))
 	}
 }
 

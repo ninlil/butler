@@ -1,0 +1,6 @@
+@base=http://localhost:10000
+GET {{base}}/test
+  ?email=adam
+###
+GET {{base}}/test
+  ?email=adam@somewhere.org
