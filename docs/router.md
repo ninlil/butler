@@ -72,3 +72,4 @@ Requirement:
 | default  | Default value if not specified in request | |
 | required | If exists, then the parameter must be specified in the request | |
 | min/max  | Numerical min/max-limit, or string-length | |
+| regex    | Regexp-matching of value before any type-conversion | |
