@@ -47,6 +47,15 @@ type Route struct {
 
 // Router is the handler which serves your routes
 type Router struct {
+	// options
+	strictSlash   bool
+	port          int
+	healthPath    string
+	readyPath     string
+	prefix        string
+	exposedErrors bool
+
+	// runtime
 	router *mux.Router
 	routes []*Route
 	server *http.Server
@@ -68,13 +77,13 @@ func (rt *Route) init() error {
 var defaultRouter *Router
 
 // Serve starts the default router with the supplied routes on the specified port
-func Serve(routes []Route, port int) error {
+func Serve(routes []Route, opts ...Option) error {
 	var err error
-	defaultRouter, err = New(routes)
+	defaultRouter, err = New(routes, opts...)
 	if err != nil {
 		return err
 	}
-	go defaultRouter.goServe(port)
+	go defaultRouter.goServe()
 	return nil
 }
 
@@ -84,32 +93,42 @@ func Shutdown() {
 }
 
 // New creates a custom Router using the supplied routes
-func New(routes []Route) (*Router, error) {
-	r := mux.NewRouter().StrictSlash(true)
+func New(routes []Route, opts ...Option) (*Router, error) {
+	router := &Router{
+		strictSlash: true,
+		port:        10000,
+		routes:      make([]*Route, 0, len(routes)),
+		healthPath:  "/healthz",
+		readyPath:   "/readyz",
+	}
 
-	rtlist := make([]*Route, 0, len(routes))
+	for _, opt := range opts {
+		if err := opt(router); err != nil {
+			return nil, err
+		}
+	}
+
+	router.router = mux.NewRouter().StrictSlash(router.strictSlash)
+
 	for i := range routes {
 		route := routes[i]
 		if err := route.init(); err != nil {
 			log.Fatal().Msg(err.Error())
 		}
-		rtlist = append(rtlist, &route)
+		router.routes = append(router.routes, &route)
 	}
 
-	return &Router{
-		router: r,
-		routes: rtlist,
-	}, nil
+	return router, nil
 }
 
-func (r *Router) goServe(port int) {
-	if err := r.Serve(port); err != nil && err != http.ErrServerClosed {
+func (r *Router) goServe() {
+	if err := r.Serve(); err != nil && err != http.ErrServerClosed {
 		log.Error().Msgf("router.Serve-error: %v", err)
 	}
 }
 
 // Serve starts the http-server on the router
-func (r *Router) Serve(port int) error {
+func (r *Router) Serve() error {
 	if r.server != nil {
 		return ErrRouterAlreadyRunning
 	}
@@ -124,14 +143,20 @@ func (r *Router) Serve(port int) error {
 			h = h.Methods(route.Method)
 		}
 
+		if route.Path == "/" && r.prefix != "" {
+			route.Path = r.prefix
+		} else {
+			route.Path = r.prefix + route.Path
+		}
 		if route.Path != "" {
 			h = h.Path(route.Path)
 		}
+		// log.Trace().Msgf("%s -> %s", route.Name, route.Path)
 
 		switch route.Path {
-		case "/readyz":
+		case r.readyPath:
 			haveReady = true
-		case "/healtyz":
+		case r.healthPath:
 			haveHealty = true
 		}
 
@@ -150,23 +175,23 @@ func (r *Router) Serve(port int) error {
 			log.Fatal().Msg(err.Error())
 		}
 
-		h.Handler(chain.Append(panicHandler).ThenFunc(fn))
+		h.Handler(chain.Append(r.panicHandler).ThenFunc(fn))
 	}
 
-	if !haveReady {
-		// log.Trace().Msg("adding /readyz")
-		r.router.NewRoute().Name("readyz").Methods("GET").Path("/readyz").HandlerFunc(readyProbe)
-	}
-	if !haveHealty {
+	if !haveHealty && r.healthPath != "" {
 		// log.Trace().Msg("adding /healtyz")
-		r.router.NewRoute().Name("healthyz").Methods("GET").Path("/healthyz").HandlerFunc(healthyProbe)
+		r.router.NewRoute().Name("healthyz").Methods("GET").Path(r.healthPath).HandlerFunc(healthyProbe)
+	}
+	if !haveReady && r.readyPath != "" {
+		// log.Trace().Msg("adding /readyz")
+		r.router.NewRoute().Name("readyz").Methods("GET").Path(r.readyPath).HandlerFunc(readyProbe)
 	}
 
 	runtime.OnClose("router", r.Shutdown)
 
-	log.Info().Msgf("listening to port %d", port)
+	log.Info().Msgf("listening to port %s:%d%s", "", r.port, r.prefix)
 
-	r.server = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r.router}
+	r.server = &http.Server{Addr: fmt.Sprintf(":%d", r.port), Handler: r.router}
 	return r.server.ListenAndServe()
 }
 

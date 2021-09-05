@@ -60,7 +60,7 @@ func Run() {
 		}()
 	}
 
-	log.Debug().Msg("awaiting signal")
+	log.Debug().Msg("lifecycle running (awaiting signal)")
 	<-done
 	log.Debug().Msg("exiting")
 }

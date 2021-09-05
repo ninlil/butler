@@ -13,7 +13,7 @@ func main() {
 	defer butler.Cleanup(nil)
 
 	workers.New("alpha", alpha)
-	workers.New("alpha", alpha)
+	//workers.New("alpha", alpha)
 	workers.New("beta", beta, workers.WithRealPanic())
 
 	butler.Run()

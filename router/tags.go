@@ -93,7 +93,7 @@ func (tag *tagInfo) int(f reflect.Value, txt string, force bool) error {
 }
 
 func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
-	v, err := strconv.ParseFloat(txt, 0)
+	v, err := strconv.ParseFloat(txt, 64)
 	// log.Debug().Msgf("field.float: %s -> %g (%v)", txt, v, err)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 
 	if !force {
 		if tag.HasMin {
-			min, err := strconv.ParseFloat(tag.Min, 0)
+			min, err := strconv.ParseFloat(tag.Min, 64)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func (tag *tagInfo) float(f reflect.Value, txt string, force bool) error {
 		}
 
 		if tag.HasMax {
-			max, err := strconv.ParseFloat(tag.Max, 0)
+			max, err := strconv.ParseFloat(tag.Max, 64)
 			if err != nil {
 				return err
 			}

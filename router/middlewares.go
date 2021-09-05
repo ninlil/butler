@@ -19,15 +19,19 @@ func wrapWriterMW(next http.Handler) http.Handler {
 	})
 }
 
-func panicHandler(next http.Handler) http.Handler {
+func (r *Router) panicHandler(next http.Handler) http.Handler {
+	var exposedErrors = r.exposedErrors
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
 				if w2, ok := bufferedresponse.Get(w); ok {
 					w2.Reset()
 				}
-				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Caller(4).Msg(fmt.Sprint(err))
+				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Caller(2).Msg(fmt.Sprint(err))
 				w.WriteHeader(http.StatusInternalServerError)
+				if exposedErrors {
+					_, _ = w.Write([]byte(fmt.Sprint(err)))
+				}
 			}
 		}()
 		next.ServeHTTP(w, r)
