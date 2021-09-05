@@ -6,6 +6,8 @@ GET {{base}}/all
 ###
 GET {{base}}/item/0
 ###
+GET {{base}}/item/xyzz
+###
 GET {{base}}/item/99
 Request-Id: dead8008
 ###

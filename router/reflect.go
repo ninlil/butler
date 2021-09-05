@@ -158,7 +158,6 @@ func (param *paramData) fillField(i int, r *http.Request) error {
 	// log.Debug().Msgf("field %d is a %s - v:%s found:%t", i, f.Kind(), value, found)
 
 	if tags.Required && !found {
-		// TODO
 		return newFieldError(nil, tags.Name, nil, errMsgRequired)
 	}
 

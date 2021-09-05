@@ -1,6 +1,7 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -33,7 +34,8 @@ func newFieldError(err error, name string, v interface{}, msg string) *FieldErro
 	var fe *FieldError
 
 	if err != nil {
-		if fe2, ok := err.(*FieldError); ok {
+		var fe2 *FieldError
+		if errors.As(err, &fe2) {
 			fe = fe2
 		}
 	}

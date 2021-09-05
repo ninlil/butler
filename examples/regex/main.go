@@ -15,7 +15,7 @@ var routes = []router.Route{
 func main() {
 	defer butler.Cleanup(nil)
 
-	err := router.Serve(routes, 10000)
+	err := router.Serve(routes, router.WithPort(10000))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}

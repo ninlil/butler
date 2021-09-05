@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -122,7 +123,7 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 }
 
 func (r *Router) goServe() {
-	if err := r.Serve(); err != nil && err != http.ErrServerClosed {
+	if err := r.Serve(); err != nil && errors.Is(err, http.ErrServerClosed) {
 		log.Error().Msgf("router.Serve-error: %v", err)
 	}
 }
@@ -170,12 +171,7 @@ func (r *Router) Serve() error {
 		// chain = chain.Append(hlog.RefererHandler("referer"))
 		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 
-		fn, err := route.wrapHandler()
-		if err != nil {
-			log.Fatal().Msg(err.Error())
-		}
-
-		h.Handler(chain.Append(r.panicHandler).ThenFunc(fn))
+		h.Handler(chain.Append(r.panicHandler).ThenFunc(route.wrapHandler()))
 	}
 
 	if !haveHealty && r.healthPath != "" {
@@ -205,21 +201,21 @@ func (r *Router) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	if err := r.server.Shutdown(ctx); err != nil && err != http.ErrServerClosed {
+	if err := r.server.Shutdown(ctx); err != nil && errors.Is(err, http.ErrServerClosed) {
 		log.Error().Msgf("router-shutdown-error: %v", err)
 	}
 	r.server = nil
 	log.Warn().Msgf("router-shutdown complete")
 }
 
-func (rt *Route) wrapHandler() (http.HandlerFunc, error) {
+func (rt *Route) wrapHandler() http.HandlerFunc {
 	if h, ok := rt.Handler.(http.HandlerFunc); ok {
-		return h, nil
+		return h
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		rt.wrap(w, r)
-	}, nil
+	}
 }
 
 func (rt *Route) writeError(err error, w http.ResponseWriter, r *http.Request, code int) {
@@ -229,8 +225,8 @@ func (rt *Route) writeError(err error, w http.ResponseWriter, r *http.Request, c
 	var result struct {
 		Error interface{} `json:"error"`
 	}
-
-	if fe, ok := err.(*FieldError); ok {
+	var fe *FieldError
+	if errors.As(err, &fe) {
 		result.Error = fe
 	} else {
 		result.Error = err.Error()
