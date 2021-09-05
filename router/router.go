@@ -230,7 +230,7 @@ func (rt *Route) writeError(err error, w http.ResponseWriter, r *http.Request, c
 		Error interface{} `json:"error"`
 	}
 
-	if fe, ok := err.(FieldError); ok {
+	if fe, ok := err.(*FieldError); ok {
 		result.Error = fe
 	} else {
 		result.Error = err.Error()
