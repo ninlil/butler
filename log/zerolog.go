@@ -22,6 +22,10 @@ func init() {
 	}
 }
 
+func Logger() zerolog.Logger {
+	return log.Logger.With().Logger()
+}
+
 // FromCtx returns the logger from the context
 func FromCtx(ctx context.Context) *zerolog.Logger {
 	return log.Ctx(ctx)
@@ -38,7 +42,7 @@ func Trace() *zerolog.Event {
 	return log.Trace()
 }
 
-// Debug starts a new log-event with the 'bebug'-level
+// Debug starts a new log-event with the 'debug'-level
 func Debug() *zerolog.Event {
 	return log.Debug()
 }
