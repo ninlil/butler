@@ -5,4 +5,5 @@ package router
 const (
 	ctJSON = "application/json; charset=utf-8"
 	ctXML  = "application/xml; charset=utf-8"
+	ctTEXT = "text/plain; charset=utf-8"
 )

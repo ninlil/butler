@@ -48,6 +48,14 @@ func WithHealth(path string) Option {
 	}
 }
 
+// Without204 removes the automatic health-probe from the router
+func Without204() Option {
+	return func(r *Router) error {
+		r.skip204 = true
+		return nil
+	}
+}
+
 // WithoutHealth removes the automatic health-probe from the router
 func WithoutHealth() Option {
 	return func(r *Router) error {

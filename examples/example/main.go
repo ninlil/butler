@@ -12,6 +12,7 @@ import (
 
 var routes = []router.Route{
 	{Name: "home", Method: "GET", Path: "/", Handler: homePage},
+	{Name: "null", Method: "GET", Path: "/null", Handler: nilFunc},
 	{Name: "getAll", Method: "GET", Path: "/all", Handler: returnAllArticles},
 	{Name: "getRange", Method: "GET", Path: "/range", Handler: returnRangeArticles},
 	{Name: "getItem", Method: "GET", Path: "/item/{index}", Handler: returnOneArticle},
@@ -29,12 +30,17 @@ func main() {
 		// router.WithPrefix("/test"),
 		router.WithStrictSlash(false),
 		router.WithExposedErrors(),
+		router.Without204(), // makes empty responses show as 200 instead of 204 "No Content"
 		router.WithPort(10000))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
 
 	butler.Run()
+}
+
+func nilFunc() error {
+	return nil
 }
 
 func homePage() string {

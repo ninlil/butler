@@ -44,6 +44,8 @@ type Route struct {
 	Handler interface{}
 	fnType  reflect.Type
 	fnValue reflect.Value
+
+	router *Router
 }
 
 // Router is the handler which serves your routes
@@ -55,6 +57,7 @@ type Router struct {
 	readyPath     string
 	prefix        string
 	exposedErrors bool
+	skip204       bool
 
 	// runtime
 	router *mux.Router
@@ -117,6 +120,10 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 			log.Fatal().Msg(err.Error())
 		}
 		router.routes = append(router.routes, &route)
+	}
+
+	for i := range router.routes {
+		router.routes[i].router = router
 	}
 
 	return router, nil

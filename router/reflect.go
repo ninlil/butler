@@ -118,7 +118,7 @@ func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, h
 			body = reflect.New(f.Type().Elem()).Interface()
 		}
 
-		ctf, _ := getContentTypeFormat(r.Header.Get("Content-Type"))
+		ctf, _, _ := getContentTypeFormat(r.Header.Get("Content-Type"))
 		err = ctf.Unmarshal(raw, body)
 		if err != nil {
 			return

@@ -2,6 +2,8 @@
 ###
 GET {{base}}
 ###
+GET {{base}}/null
+###
 GET {{base}}/all
 ###
 GET {{base}}/item/0
