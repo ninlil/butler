@@ -19,9 +19,15 @@ type dtArgs struct {
 
 type dtReturn struct {
 	*dtArgs
-	XMLName struct{} `json:"-" xml:"DatatypeArgs"`
+	BytesAsText string   `json:"bytes_as_text"`
+	DurAsText   string   `json:"dur_as_text"`
+	XMLName     struct{} `json:"-" xml:"DatatypeArgs"`
 }
 
 func types(args *dtArgs) *dtReturn {
-	return &dtReturn{dtArgs: args}
+	return &dtReturn{
+		dtArgs:      args,
+		BytesAsText: string(args.Bytes),
+		DurAsText:   args.Dur.String(),
+	}
 }

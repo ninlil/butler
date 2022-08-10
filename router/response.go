@@ -68,13 +68,9 @@ func getContentTypeFormat(format string) (ctf ctFormat, indent int, isCustom boo
 	return
 }
 
-func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
+func createResponse(accept string, data interface{}) (buf []byte, ct string, indent int, err error) {
+	ctf, indent, isCustom := getContentTypeFormat(accept)
 
-	ctf, indent, isCustom := getContentTypeFormat(r.Header.Get("Accept"))
-
-	var ct string
-	var buf []byte
-	var err error
 	if isCustom || data != nil {
 		switch ctf {
 		case ctfJSON:
@@ -84,6 +80,7 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 			} else {
 				buf, err = json.Marshal(data)
 			}
+
 		case ctfXML:
 			ct = ctXML
 			if indent > 0 {
@@ -91,6 +88,7 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 			} else {
 				buf, err = xml.Marshal(data)
 			}
+
 		case ctfTEXT:
 			ct = ctTEXT
 			switch o := data.(type) {
@@ -101,6 +99,12 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 			}
 		}
 	}
+	return
+}
+
+func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
+
+	buf, ct, indent, err := createResponse(r.Header.Get("Accept"), data)
 
 	if err != nil {
 		rt.writeError(err, w, r, http.StatusInternalServerError)

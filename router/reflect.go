@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -106,7 +106,7 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 
 func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, handled bool, err error) {
 	var raw []byte
-	raw, err = ioutil.ReadAll(r.Body)
+	raw, err = io.ReadAll(r.Body)
 	found = err == nil && len(raw) > 0
 
 	if found {

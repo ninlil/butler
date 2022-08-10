@@ -22,6 +22,7 @@ func init() {
 	}
 }
 
+// Logger returns a Logger-object
 func Logger() zerolog.Logger {
 	return log.Logger.With().Logger()
 }
