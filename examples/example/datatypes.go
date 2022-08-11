@@ -15,13 +15,15 @@ type dtArgs struct {
 	Time    time.Time     `json:"time" from:"query"`
 	Dur     time.Duration `json:"dur" from:"query"`
 	Bytes   []byte        `json:"bytes" from:"query"`
+	Body    []byte        `from:"body"`
 }
 
 type dtReturn struct {
 	*dtArgs
+	XMLName     struct{} `json:"-" xml:"DatatypeArgs"`
 	BytesAsText string   `json:"bytes_as_text"`
 	DurAsText   string   `json:"dur_as_text"`
-	XMLName     struct{} `json:"-" xml:"DatatypeArgs"`
+	BodySize    int      `json:"BodySize"`
 }
 
 func types(args *dtArgs) *dtReturn {
@@ -29,5 +31,6 @@ func types(args *dtArgs) *dtReturn {
 		dtArgs:      args,
 		BytesAsText: string(args.Bytes),
 		DurAsText:   args.Dur.String(),
+		BodySize:    len(args.Body),
 	}
 }

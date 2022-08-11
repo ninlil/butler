@@ -1,0 +1,21 @@
+@base=http://localhost:10000/body
+###
+POST {{base}}/bytes
+
+1234
+abcd
+###
+POST {{base}}/string
+
+1234
+abcd
+###
+POST {{base}}/strings
+
+1234
+abcd
+###
+POST {{base}}/struct
+
+1234
+abcd

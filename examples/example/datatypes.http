@@ -1,6 +1,6 @@
 @base=http://localhost:10000
 ###
-GET {{base}}/types
+POST {{base}}/types
   ?int=1234
   &int8=123
   &int16=1234
@@ -14,6 +14,11 @@ GET {{base}}/types
   &dur=1m5s
   &bytes=a2FsbGU=
 Accept: application/json;indent=0
+Content-Type: text/plain
+Content-Length: 4
+
+Body
+
 ###
 GET {{base}}/types
   ?int=1234

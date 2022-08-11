@@ -17,10 +17,15 @@ var routes = []router.Route{
 	{Name: "getRange", Method: "GET", Path: "/range", Handler: returnRangeArticles},
 	{Name: "getItem", Method: "GET", Path: "/item/{index}", Handler: returnOneArticle},
 	{Name: "add", Method: "POST", Path: "/add", Handler: addArticle},
-	{Name: "types", Method: "GET", Path: "/types", Handler: types},
+	{Name: "types", Method: "*", Path: "/types", Handler: types},
 	{Name: "sleep", Method: "GET", Path: "/sleep", Handler: sleep},
 	{Name: "id", Method: "GET", Path: "/id", Handler: tracking},
 	{Name: "sum", Method: "GET", Path: "/sum", Handler: handler},
+
+	{Name: "body_struct", Method: "POST", Path: "/body/struct", Handler: bodyStruct},
+	{Name: "body_bytes", Method: "POST", Path: "/body/bytes", Handler: bodyBytes},
+	{Name: "body_string", Method: "POST", Path: "/body/string", Handler: bodyString},
+	{Name: "body_strings", Method: "POST", Path: "/body/strings", Handler: bodyStrings},
 }
 
 func main() {
