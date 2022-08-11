@@ -243,6 +243,7 @@ func (rt *Route) writeError(err error, w http.ResponseWriter, r *http.Request, c
 
 func (rt *Route) wrap(w http.ResponseWriter, r *http.Request) {
 	log := log.FromCtx(r.Context())
+	defer r.Body.Close()
 
 	args, err := rt.createArgs(w, r)
 	if err != nil {
