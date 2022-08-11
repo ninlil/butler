@@ -3,6 +3,8 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -27,7 +29,18 @@ func (r *Router) panicHandler(next http.Handler) http.Handler {
 				if w2, ok := bufferedresponse.Get(w); ok {
 					w2.Reset()
 				}
-				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Caller(2).Msg(fmt.Sprint(err))
+
+				var caller = 0
+				for skip := 2; skip < 10 && caller == 0; skip++ {
+					_, file, _, ok := runtime.Caller(skip)
+					if ok {
+						if !strings.Contains(file, "/go/src/") && caller == 0 {
+							caller = skip
+						}
+					}
+				}
+
+				hlog.FromRequest(r).WithLevel(zerolog.PanicLevel).Caller(caller).Msg(fmt.Sprint(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				if exposedErrors {
 					_, _ = w.Write([]byte(fmt.Sprint(err)))
