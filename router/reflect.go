@@ -1,6 +1,8 @@
 package router
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,6 +54,9 @@ func (rt *Route) createArgs(w http.ResponseWriter, r *http.Request) ([]reflect.V
 				return nil, err
 			}
 			args[i] = ptr
+
+		default:
+			log.Warn().Msgf("route %s: arg %d is of unknown type: %v", rt.Name, i, arg.String())
 		}
 	}
 
@@ -107,9 +112,40 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, handled bool, err error) {
 	var raw []byte
 	raw, err = io.ReadAll(r.Body)
-	found = err == nil && len(raw) > 0
+	size := len(raw)
+	found = err == nil && size > 0
 
 	if found {
+		ft := f.Type()
+
+		if ft.Kind() == reflect.String {
+			f.Set(reflect.ValueOf(string(raw)))
+			return "", true, true, nil
+		}
+
+		if f.Kind() == reflect.Slice {
+			e := ft.Elem()
+
+			switch e.Kind() {
+			case reflect.Uint8:
+				f.Set(reflect.ValueOf(raw))
+
+			case reflect.String:
+				buf := bytes.NewBuffer(raw)
+				scanner := bufio.NewScanner(buf)
+				var lines []string
+				for scanner.Scan() {
+					lines = append(lines, scanner.Text())
+				}
+				f.Set(reflect.ValueOf(lines))
+
+			default:
+				log.Warn().Msgf("Body is an array of unknown type: %s", e.String())
+				return string(value), false, false, nil
+			}
+			return "", true, true, nil
+		}
+
 		var body interface{}
 
 		if f.Kind() == reflect.Struct {
