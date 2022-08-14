@@ -7,6 +7,14 @@ import (
 // Option is for 'functional options' to the New and Serve-methods
 type Option func(*Router) error
 
+// WithName assigns a prefix to all router (ex "/prefix")
+func WithName(name string) Option {
+	return func(r *Router) error {
+		r.name = name
+		return nil
+	}
+}
+
 // WithPrefix assigns a prefix to all router (ex "/prefix")
 func WithPrefix(path string) Option {
 	return func(r *Router) error {

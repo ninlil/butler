@@ -16,6 +16,7 @@ const (
 var (
 	ErrRouterAlreadyRunning = fmt.Errorf("router is already running")
 	ErrInvalidMatch         = fmt.Errorf("invalid match")
+	ErrRouterDuplicateName  = fmt.Errorf("duplicate router name")
 )
 
 // FieldError is the error-message returned when a parameter (query och path) is invalid

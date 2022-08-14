@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -30,6 +31,57 @@ var (
 	// tInt            = reflect.TypeOf(int(0))
 )
 
+type runningData struct {
+	routers map[string]*Router
+	wg      *sync.WaitGroup
+}
+
+var running = new(runningData)
+
+func (run *runningData) addRouter(r *Router) error {
+
+	if _, duplicate := run.routers[r.name]; duplicate {
+		return ErrRouterDuplicateName
+	}
+
+	var first bool
+	if run.routers == nil {
+		first = true
+		run.routers = make(map[string]*Router)
+	}
+	if run.wg == nil {
+		run.wg = new(sync.WaitGroup)
+	}
+	run.routers[r.name] = r
+	run.wg.Add(1)
+
+	if first {
+		go func() {
+			log.Trace().Msg("@ waiting for running router(s)")
+			run.wg.Wait()
+			log.Trace().Msg("@ all routers have stopped.. stopping runtime")
+			runtime.Close()
+		}()
+	}
+
+	return nil
+}
+
+func (run *runningData) Done(name string) {
+	log.Trace().Msgf("router %s is done", name)
+	if run.wg == nil {
+		return
+	}
+	run.wg.Done()
+}
+
+func (run *runningData) Wait() {
+	if run.wg == nil {
+		return
+	}
+	run.wg.Wait()
+}
+
 type errHandlerNotAFunc Route
 
 func (e errHandlerNotAFunc) Error() string {
@@ -51,6 +103,7 @@ type Route struct {
 // Router is the handler which serves your routes
 type Router struct {
 	// options
+	name          string
 	strictSlash   bool
 	port          int
 	healthPath    string
@@ -63,6 +116,7 @@ type Router struct {
 	router *mux.Router
 	routes []*Route
 	server *http.Server
+	mutex  sync.Mutex
 }
 
 func (rt *Route) init() error {
@@ -111,6 +165,9 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 			return nil, err
 		}
 	}
+	if router.name == "" {
+		router.name = "default"
+	}
 
 	router.router = mux.NewRouter().StrictSlash(router.strictSlash)
 
@@ -130,7 +187,7 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 }
 
 func (r *Router) goServe() {
-	if err := r.Serve(); err != nil && errors.Is(err, http.ErrServerClosed) {
+	if err := r.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error().Msgf("router.Serve-error: %v", err)
 	}
 }
@@ -140,6 +197,7 @@ func (r *Router) Serve() error {
 	if r.server != nil {
 		return ErrRouterAlreadyRunning
 	}
+
 	var haveReady bool
 	var haveHealty bool
 
@@ -190,7 +248,12 @@ func (r *Router) Serve() error {
 		r.router.NewRoute().Name("readyz").Methods("GET").Path(r.readyPath).HandlerFunc(readyProbe)
 	}
 
-	runtime.OnClose("router", r.Shutdown)
+	if err := running.addRouter(r); err != nil {
+		return err
+	}
+	defer running.Done(r.name)
+
+	runtime.OnClose("router_"+r.name, r.Shutdown)
 
 	log.Info().Msgf("listening to port %s:%d%s", "", r.port, r.prefix)
 
@@ -200,19 +263,23 @@ func (r *Router) Serve() error {
 
 // Shutdown does a graceful shutdown of the router
 func (r *Router) Shutdown() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if r.server == nil {
 		return
 	}
-	log.Warn().Msgf("router-shutdown initiated...")
+	log.Trace().Msgf("router-shutdown initiated...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	if err := r.server.Shutdown(ctx); err != nil && errors.Is(err, http.ErrServerClosed) {
+	err := r.server.Shutdown(ctx)
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		log.Error().Msgf("router-shutdown-error: %v", err)
 	}
 	r.server = nil
-	log.Warn().Msgf("router-shutdown complete")
+	log.Trace().Msgf("router-shutdown complete")
 }
 
 func (rt *Route) wrapHandler() http.HandlerFunc {

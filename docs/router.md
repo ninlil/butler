@@ -73,3 +73,26 @@ Requirement:
 | required | If exists, then the parameter must be specified in the request | |
 | min/max  | Numerical min/max-limit, or string-length | |
 | regex    | Regexp-matching of value before any type-conversion | |
+
+### Reading the body
+The datatype for your body can either be a `type struct` which will parse the input to your struct.
+You can also just get the raw data in the following formats:
+* `[]byte` - you will get the raw data
+* `string` - you will get the data as a Go string
+* `[]string` - A scanner will parse multilined text into an array of strings
+
+## Shutdown
+
+The routers is implemented with a 'graceful shutdown method' allowing all running handlers to complete (within 2 minutes) before the server is terminated (new connections are not accepted during this phase)
+
+### Manual shutdown
+If you want to shutdown a router manually then you call the `router.Shutdown()` method.
+
+> The method is syncronuous.
+> If you want to to this inside a handler you need to run it using a goroutine:
+> ```go
+> func shutdownHandler() {
+>   go router.Shutdown()
+> }
+> ```
+> Otherwise you will block yourself because of the 'graceful shutdown'
