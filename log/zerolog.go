@@ -22,6 +22,60 @@ func init() {
 	}
 }
 
+type Level int8
+
+// Level-values are matched with 'syslog'
+const (
+	TraceLevel Level = 8
+	DebugLevel Level = 7
+	InfoLevel  Level = 6
+	// Notice = 5 -- not implemented here
+	WarnLevel  Level = 4
+	ErrorLevel Level = 3
+	// Critical = 2 -- not implemented here
+	PanicLevel Level = 1
+	FatalLevel Level = 0
+)
+
+func translateLevel(l Level) zerolog.Level {
+	if l > TraceLevel {
+		l = TraceLevel
+	}
+	if l < FatalLevel {
+		l = FatalLevel
+	}
+	switch l {
+	case TraceLevel:
+		return zerolog.TraceLevel
+	case DebugLevel:
+		return zerolog.DebugLevel
+	case InfoLevel:
+		return zerolog.InfoLevel
+	case Level(5):
+		return zerolog.InfoLevel
+	case WarnLevel:
+		return zerolog.WarnLevel
+	case ErrorLevel:
+		return zerolog.ErrorLevel
+	case Level(2):
+		return zerolog.ErrorLevel
+	case PanicLevel:
+		return zerolog.PanicLevel
+	case FatalLevel:
+		return zerolog.FatalLevel
+	}
+	return zerolog.InfoLevel
+}
+
+func WithLevel(l Level) {
+	zl := translateLevel(l)
+	if log.Logger.GetLevel() == zl {
+		return
+	}
+
+	log.Logger = log.Logger.Level(zl)
+}
+
 // Logger returns a Logger-object
 func Logger() zerolog.Logger {
 	return log.Logger.With().Logger()
