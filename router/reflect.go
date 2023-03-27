@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"github.com/ninlil/butler/log"
 )
 
@@ -67,7 +67,11 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 	switch tags.From {
 	case fromPath:
 		if param.vars == nil {
-			param.vars = mux.Vars(r)
+			params := chi.RouteContext(r.Context()).URLParams
+			param.vars = make(map[string]string, len(params.Keys))
+			for i, key := range params.Keys {
+				param.vars[key] = params.Values[i]
+			}
 		}
 		value, found = param.vars[tags.Name]
 

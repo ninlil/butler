@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"github.com/justinas/alice"
 	"github.com/ninlil/butler/log"
 	"github.com/ninlil/butler/runtime"
@@ -113,7 +113,7 @@ type Router struct {
 	skip204       bool
 
 	// runtime
-	router *mux.Router
+	router *chi.Mux
 	routes []*Route
 	server *http.Server
 	mutex  sync.Mutex
@@ -169,7 +169,7 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 		router.name = "default"
 	}
 
-	router.router = mux.NewRouter().StrictSlash(router.strictSlash)
+	router.router = chi.NewRouter()
 
 	for i := range routes {
 		route := routes[i]
@@ -201,21 +201,21 @@ func (r *Router) Serve() error {
 	var haveReady bool
 	var haveHealty bool
 
+	//r.router.Use(wrapWriterMW, log.NewHandler(), IDHandler(), accessLogger)
+
 	for _, route := range r.routes {
 		// log.Trace().Msgf("adding %s %s", route.Method, route.Path)
-		h := r.router.NewRoute().Name(route.Name)
+		// h := r.router.NewRoute().Name(route.Name)
+		var method = "GET"
 
 		if route.Method != All {
-			h = h.Methods(route.Method)
+			method = route.Method
 		}
 
 		if route.Path == "/" && r.prefix != "" {
 			route.Path = r.prefix
 		} else {
 			route.Path = r.prefix + route.Path
-		}
-		if route.Path != "" {
-			h = h.Path(route.Path)
 		}
 		// log.Trace().Msgf("%s -> %s", route.Name, route.Path)
 
@@ -236,16 +236,16 @@ func (r *Router) Serve() error {
 		// chain = chain.Append(hlog.RefererHandler("referer"))
 		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 
-		h.Handler(chain.Append(r.panicHandler).ThenFunc(route.wrapHandler()))
+		r.router.Method(method, route.Path, chain.Append(r.panicHandler).ThenFunc(route.wrapHandler()))
 	}
 
 	if !haveHealty && r.healthPath != "" {
 		// log.Trace().Msg("adding /healtyz")
-		r.router.NewRoute().Name("healthyz").Methods("GET").Path(r.healthPath).HandlerFunc(healthyProbe)
+		r.router.Get(r.healthPath, healthyProbe)
 	}
 	if !haveReady && r.readyPath != "" {
 		// log.Trace().Msg("adding /readyz")
-		r.router.NewRoute().Name("readyz").Methods("GET").Path(r.readyPath).HandlerFunc(readyProbe)
+		r.router.Get(r.readyPath, readyProbe)
 	}
 
 	if err := running.addRouter(r); err != nil {

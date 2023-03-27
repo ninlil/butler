@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/ninlil/butler/bufferedresponse"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
@@ -55,7 +54,6 @@ func accessLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w2, _ := bufferedresponse.Get(w)
 		log := hlog.FromRequest(r)
-		route := mux.CurrentRoute(r)
 
 		start := time.Now()
 		next.ServeHTTP(w, r)
@@ -77,12 +75,13 @@ func accessLogger(next http.Handler) http.Handler {
 		e.Int("status", w2.Status())
 		e.Int("size", w2.Size())
 
-		if route != nil {
-			e.Str("route", route.GetName())
-			// if path, err := route.GetPathTemplate(); err == nil {
-			// 	e.Str("path", path)
-			// }
-		}
+		// 'chi' doesn't have a way to get the route name
+		// if route != nil {
+		// 	e.Str("route", route.GetName())
+		// 	// if path, err := route.GetPathTemplate(); err == nil {
+		// 	// 	e.Str("path", path)
+		// 	// }
+		// }
 
 		e.Msgf("%s %s", r.Method, r.URL.Path)
 	})
