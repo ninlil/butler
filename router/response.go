@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ninlil/butler/bufferedresponse"
 	"github.com/ninlil/butler/log"
 )
 
@@ -104,6 +105,11 @@ func createResponse(accept string, data interface{}) (buf []byte, ct string, ind
 
 func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
 
+	var w2 *bufferedresponse.ResponseWriter = nil
+	if data == nil {
+		w2, _ = bufferedresponse.Get(w)
+	}
+
 	buf, ct, indent, err := createResponse(r.Header.Get("Accept"), data)
 
 	if err != nil {
@@ -118,7 +124,12 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 	if ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
+
 	size := len(buf)
+	if w2 != nil {
+		size += w2.Size()
+	}
+
 	if size > 0 {
 		w.Header().Set("Content-Length", fmt.Sprint(size))
 	}
@@ -132,7 +143,7 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 	}
 
 	w.WriteHeader(status)
-	if size > 0 {
+	if len(buf) > 0 {
 		_, _ = w.Write(buf)
 	}
 }
