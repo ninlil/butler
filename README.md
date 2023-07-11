@@ -123,7 +123,7 @@ and the log also prints (to console/tty)
 ```
 
 ## External packages
-- github.com/gorilla/mux - A powerful HTTP router and URL matcher for building Go web servers
+- github.com/go-chi/chi/v5 - is a lightweight, idiomatic and composable router for building Go HTTP services
 -	github.com/justinas/alice - Painless middleware chaining for Go
 -	github.com/rs/xid - xid is a globally unique id generator thought for the web
 -	github.com/rs/zerolog - Zero Allocation JSON Logger
