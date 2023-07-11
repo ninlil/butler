@@ -27,6 +27,7 @@ var (
 	done = make(chan bool, 1)
 )
 
+// Quit sends a signal to the butler to stop
 func Quit() {
 	sigs <- syscall.SIGQUIT
 }

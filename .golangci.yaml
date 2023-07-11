@@ -1,0 +1,21 @@
+linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/rs/zerolog
+          - github.com/rs/zerolog/log
+          - github.com/rs/zerolog/hlog
+          - github.com/rs/xid
+          - github.com/go-chi/chi/v5
+          - github.com/ninlil/butler/log
+          - github.com/ninlil/butler/router
+          - github.com/ninlil/butler/runtime
+          - github.com/ninlil/butler/workers
+          - github.com/ninlil/butler/bufferedresponse
+          - github.com/justinas/alice
+#        deny:

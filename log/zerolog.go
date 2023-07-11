@@ -22,6 +22,7 @@ func init() {
 	}
 }
 
+// Level is a type for log-levels
 type Level int8
 
 // Level-values are matched with 'syslog'
@@ -67,6 +68,7 @@ func translateLevel(l Level) zerolog.Level {
 	return zerolog.InfoLevel
 }
 
+// WithLevel sets the log-level for the default logger
 func WithLevel(l Level) {
 	zl := translateLevel(l)
 	if log.Logger.GetLevel() == zl {
