@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type bodyStructData struct {
 	Data string `json:"data"`
@@ -22,6 +25,10 @@ type bodyStringsArgs struct {
 	Body []string `from:"body"`
 }
 
+type bodyMapArgs struct {
+	Body map[string]interface{} `from:"body"`
+}
+
 func bodyStruct(args *bodyStructArgs) string {
 	return args.Body.Data
 }
@@ -36,4 +43,9 @@ func bodyString(args *bodyStringArgs) string {
 
 func bodyStrings(args *bodyStringsArgs) string {
 	return strings.Join(args.Body, ", ")
+}
+
+func bodyMap(args *bodyMapArgs) []byte {
+	data, _ := json.MarshalIndent(args.Body, "", "  ")
+	return data
 }

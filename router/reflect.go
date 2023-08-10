@@ -152,9 +152,14 @@ func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, h
 
 		var body interface{}
 
-		if f.Kind() == reflect.Struct {
+		switch f.Kind() {
+		case reflect.Map:
 			body = f.Addr().Interface()
-		} else {
+
+		case reflect.Struct:
+			body = f.Addr().Interface()
+
+		default:
 			body = reflect.New(f.Type().Elem()).Interface()
 		}
 

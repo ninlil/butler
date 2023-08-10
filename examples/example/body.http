@@ -19,3 +19,13 @@ POST {{base}}/struct
 
 1234
 abcd
+###
+POST {{base}}/map
+Content-Type: application/json
+Accept: text/plain
+
+{
+  "key2": "value2",
+
+  "key1": "value1"
+}

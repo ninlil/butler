@@ -22,6 +22,7 @@ var routes = []router.Route{
 	{Name: "id", Method: "GET", Path: "/id", Handler: tracking},
 	{Name: "sum", Method: "GET", Path: "/sum", Handler: handler},
 
+	{Name: "body_map", Method: "POST", Path: "/body/map", Handler: bodyMap},
 	{Name: "body_struct", Method: "POST", Path: "/body/struct", Handler: bodyStruct},
 	{Name: "body_bytes", Method: "POST", Path: "/body/bytes", Handler: bodyBytes},
 	{Name: "body_string", Method: "POST", Path: "/body/string", Handler: bodyString},
