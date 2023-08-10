@@ -72,6 +72,11 @@ func getContentTypeFormat(format string) (ctf ctFormat, indent int, isCustom boo
 func createResponse(accept string, data interface{}) (buf []byte, ct string, indent int, err error) {
 	ctf, indent, isCustom := getContentTypeFormat(accept)
 
+	if tmp, ok := data.([]byte); ok {
+		buf = tmp
+		return
+	}
+
 	if isCustom || data != nil {
 		switch ctf {
 		case ctfJSON:
