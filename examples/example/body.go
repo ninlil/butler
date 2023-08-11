@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
+
+	"github.com/ninlil/butler/log"
 )
 
 type bodyStructData struct {
@@ -29,7 +32,8 @@ type bodyMapArgs struct {
 	Body map[string]interface{} `from:"body"`
 }
 
-func bodyStruct(args *bodyStructArgs) string {
+func bodyStruct(r *http.Request, args *bodyStructArgs) string {
+	log.AddRequestFields(r, "method", "bodyStruct")
 	return args.Body.Data
 }
 
@@ -45,7 +49,8 @@ func bodyStrings(args *bodyStringsArgs) string {
 	return strings.Join(args.Body, ", ")
 }
 
-func bodyMap(args *bodyMapArgs) []byte {
+func bodyMap(r *http.Request, args *bodyMapArgs) []byte {
+	log.AddRequestFields(r, "method", "bodyMap", "mapSize", len(args.Body))
 	data, _ := json.MarshalIndent(args.Body, "", "  ")
 	return data
 }
