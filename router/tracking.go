@@ -86,26 +86,26 @@ func IDHandler( /*fieldKey, headerName string*/ ) func(next http.Handler) http.H
 			log := zerolog.Ctx(ctx)
 
 			// Request-Id
-			id := ReqIDFromRequest(r)
-			if id == "" {
-				id = xid.New().String()
+			rid := ReqIDFromRequest(r)
+			if rid == "" {
+				rid = xid.New().String()
 			}
-			ctx = CtxWithReqID(ctx, id)
-			w.Header().Set(requestID, id)
+			ctx = CtxWithReqID(ctx, rid)
+			w.Header().Set(requestID, rid)
 
 			// Correlation-Id
-			id = CorrIDFromRequest(r)
-			if id == "" {
-				id = xid.New().String()
+			cid := CorrIDFromRequest(r)
+			if cid == "" {
+				cid = xid.New().String()
 			}
-			ctx = CtxWithCorrID(ctx, id)
-			w.Header().Set(correlationID, id)
+			ctx = CtxWithCorrID(ctx, cid)
+			w.Header().Set(correlationID, cid)
 
 			r = r.WithContext(ctx)
 
 			log.UpdateContext(func(c zerolog.Context) zerolog.Context {
 				// return c.Str(fieldKey, id)
-				return c.Str("req_id", id).Str("corr_id", id)
+				return c.Str("req_id", rid).Str("corr_id", cid)
 			})
 
 			next.ServeHTTP(w, r)

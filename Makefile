@@ -22,3 +22,6 @@ check2:
 check2:
 	golangci-lint run -E misspell -E depguard -E dupl -E goconst -E gocyclo -E predeclared -E tagliatelle -E errorlint -E godox -D structcheck
 	@echo ""
+
+updates:
+	go list -m -u all
