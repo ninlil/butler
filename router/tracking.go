@@ -12,8 +12,8 @@ import (
 // Need to handle incoming Request-ID and/or Correlation-Id differently
 
 const (
-	requestID     = "Request-Id"
-	correlationID = "Correlation-Id"
+	requestID     = "X-Request-Id"
+	correlationID = "X-Correlation-Id"
 )
 
 // Handle the "Correlation-Id" header...
