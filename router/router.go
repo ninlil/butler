@@ -208,7 +208,7 @@ func (r *Router) Serve() error {
 		// h := r.router.NewRoute().Name(route.Name)
 		var method = "GET"
 
-		if route.Method != All {
+		if route.Method != "" {
 			method = route.Method
 		}
 

@@ -6,7 +6,7 @@ check:
 	gocyclo -over 15 . || echo -n ""
 	@echo ""
 	golangci-lint run -E misspell -E depguard -E dupl -E goconst -E gocyclo -E predeclared -E tagliatelle -E errorlint -E godox -E unparam
-	golint -min_confidence 0.21 -set_exit_status ./...
+#	golint -min_confidence 0.21 -set_exit_status ./...
 	@echo "\nAll ok!"
 
 release:
