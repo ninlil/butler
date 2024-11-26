@@ -236,7 +236,12 @@ func (r *Router) Serve() error {
 		// chain = chain.Append(hlog.RefererHandler("referer"))
 		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 
-		r.router.Method(method, route.Path, chain.Append(r.panicHandler).ThenFunc(route.wrapHandler()))
+		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
+		if method == "*" {
+			r.router.Handle(route.Path, handler) // allow any method
+		} else {
+			r.router.Method(method, route.Path, handler)
+		}
 	}
 
 	if !haveHealty && r.healthPath != "" {
