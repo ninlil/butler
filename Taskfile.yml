@@ -1,0 +1,21 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  check:
+    cmds:
+      - golangci-lint run -E misspell -E depguard -E dupl -E goconst -E gocyclo -E predeclared -E tagliatelle -E errorlint -E godox -D structcheck
+  
+  test-files:
+    desc: Run the 'files' example
+    cmds:
+      - go run ./examples/files

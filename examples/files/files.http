@@ -1,0 +1,38 @@
+@base=http://localhost:10000
+
+###
+# should return "Hello, World!"
+GET {{base}}/api/hello
+
+###
+# should return 404 not found
+GET {{base}}/api/
+
+###
+# should return 404 not found
+GET {{base}}/api/foo
+
+###
+# should return 404 not found
+GET {{base}}/api/foo/bar
+
+###
+# should return content of data/file1.test
+GET {{base}}/file1.test
+
+###
+# should return a 404 not found
+GET {{base}}/file2.test
+
+
+###
+# should return a 301 redirect -> ./
+GET {{base}}/index.html
+
+###
+# should return the content of data/index.html
+GET {{base}}/
+
+###
+# should return the content of data/index.html
+GET {{base}}/#kalle
