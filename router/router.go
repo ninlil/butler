@@ -96,6 +96,7 @@ type Route struct {
 	Handler interface{}
 	fnType  reflect.Type
 	fnValue reflect.Value
+	isRaw   bool // if Handler is a regular http.HandlerFunc, then no wrapping is needed
 
 	router *Router
 }
@@ -129,6 +130,8 @@ func (rt *Route) init() error {
 	if rt.fnType.Kind() != reflect.Func {
 		return errHandlerNotAFunc(*rt)
 	}
+	_, rt.isRaw = rt.Handler.(func(http.ResponseWriter, *http.Request))
+
 	return nil
 }
 
@@ -288,8 +291,8 @@ func (r *Router) Shutdown() {
 }
 
 func (rt *Route) wrapHandler() http.HandlerFunc {
-	if h, ok := rt.Handler.(http.HandlerFunc); ok {
-		return h
+	if rt.isRaw {
+		return rt.Handler.(func(http.ResponseWriter, *http.Request))
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

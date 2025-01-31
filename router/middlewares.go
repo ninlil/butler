@@ -56,7 +56,7 @@ func accessLogger(next http.Handler) http.Handler {
 		log := hlog.FromRequest(r)
 
 		start := time.Now()
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w2, r)
 		dur := time.Since(start)
 
 		var e *zerolog.Event
