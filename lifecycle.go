@@ -33,12 +33,12 @@ func Quit() {
 }
 
 func butlerClose() {
-	log.Trace().Msg("closing butler...")
+	log.Trace().Msg("butler: closing...")
 	select {
 	case done <- true:
-		//log.Trace().Msg("butler closed - ok")
+		//log.Trace().Msg("butler: closed - ok")
 	case <-time.After(10 * time.Second):
-		log.Trace().Msg("butler close - timeout")
+		log.Trace().Msg("butler: close - timeout")
 	}
 }
 

@@ -59,7 +59,7 @@ func (d *driverType) start(done chan DoneBehavior) {
 	d.started = true
 
 	d.wg.Wait()
-	log.Debug().Msgf("workers done.. signalling %d", OnDone)
+	log.Debug().Msgf("workers: all done.. signalling %d", OnDone)
 	select {
 	case done <- OnDone:
 	case <-time.After(30 * time.Second):
@@ -73,13 +73,13 @@ func (d *driverType) startWorker(w *Worker) {
 		w.state = stateDone
 		w.ended = time.Now()
 		if w.realPanic {
-			log.Debug().Msg("worker exit")
+			log.Debug().Msgf("workers: [%s] exit", w.name)
 		} else {
 			if err := recover(); err != nil {
 				w.state = statePanic
 				log.WithLevel(zerolog.PanicLevel).Caller(2).Msgf("worker-panic: %v", err)
 			} else {
-				log.Debug().Msg("worker done")
+				log.Debug().Msgf("workers: [%s] done", w.name)
 			}
 		}
 		d.wg.Done()
@@ -87,6 +87,6 @@ func (d *driverType) startWorker(w *Worker) {
 
 	w.started = time.Now()
 	w.state = stateRunning
-	log.Debug().Msgf("worker starting...")
+	log.Debug().Msgf("workers: [%s] starting...", w.name)
 	w.handler(w.ctx)
 }

@@ -29,7 +29,7 @@ func (rt *Route) createArgs(w http.ResponseWriter, r *http.Request) ([]reflect.V
 	for i := 0; i < nArgs; i++ {
 		arg := rt.fnType.In(i)
 
-		// log.Debug().Msgf("arg #%d is a %s", i, arg.Kind())
+		// log.Debug().Msgf("router: arg #%d is a %s", i, arg.Kind())
 
 		switch true {
 		case arg == tContext:
@@ -56,7 +56,7 @@ func (rt *Route) createArgs(w http.ResponseWriter, r *http.Request) ([]reflect.V
 			args[i] = ptr
 
 		default:
-			log.Warn().Msgf("route %s: arg %d is of unknown type: %v", rt.Name, i, arg.String())
+			log.Warn().Msgf("router: route %s: arg %d is of unknown type: %v", rt.Name, i, arg.String())
 		}
 	}
 
@@ -101,10 +101,10 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 		re, err = getRegexp(tags.Regex)
 		if err != nil {
 			log := log.FromCtx(r.Context())
-			log.Warn().Msgf("field '%s' has invalid regex '%s': %v", tags.Name, tags.Regex, err)
+			log.Warn().Msgf("router: field '%s' has invalid regex '%s': %v", tags.Name, tags.Regex, err)
 			return
 		}
-		log.Debug().Msgf("? regexp-match '%s' with '%s' == %t", value, tags.Regex, re.MatchString(value))
+		// log.Debug().Msgf("router: ? regexp-match '%s' with '%s' == %t", value, tags.Regex, re.MatchString(value))
 		if !re.MatchString(value) {
 			err = ErrInvalidMatch
 			return
@@ -144,7 +144,7 @@ func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, h
 				f.Set(reflect.ValueOf(lines))
 
 			default:
-				log.Warn().Msgf("Body is an array of unknown type: %s", e.String())
+				log.Warn().Msgf("router: Body is an array of unknown type: %s", e.String())
 				return string(value), false, false, nil
 			}
 			return "", true, true, nil
@@ -200,7 +200,7 @@ func (param *paramData) fillField(i int, r *http.Request) error {
 		isDefault = true
 	}
 
-	// log.Debug().Msgf("field %d is a %s - v:%s found:%t", i, f.Kind(), value, found)
+	// log.Debug().Msgf("router: field %d is a %s - v:%s found:%t", i, f.Kind(), value, found)
 
 	if tags.Required && !found {
 		return newFieldError(nil, tags.Name, nil, errMsgRequired)
@@ -268,7 +268,7 @@ func (rt *Route) createStruct(arg reflect.Type, r *http.Request) (reflect.Value,
 		}
 	}
 
-	// log.Debug().Msgf("createStruct: %+v", param.ptr)
+	// log.Debug().Msgf("router: createStruct: %+v", param.ptr)
 
 	return param.ptr, nil
 }

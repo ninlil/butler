@@ -47,7 +47,7 @@ func getContentTypeFormat(format string) (ctf ctFormat, indent int, isCustom boo
 	if format != "" {
 		media, params, err := mime.ParseMediaType(format)
 		if err != nil {
-			log.Warn().Msgf("Accept/Content-type - error: %v", err)
+			log.Warn().Msgf("router: Accept/Content-type - error: %v", err)
 		}
 		switch media {
 		case "application/json":

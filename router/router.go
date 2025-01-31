@@ -57,9 +57,9 @@ func (run *runningData) addRouter(r *Router) error {
 
 	if first {
 		go func() {
-			log.Trace().Msg("@ waiting for running router(s)")
+			log.Trace().Msg("router: waiting for running router(s)")
 			run.wg.Wait()
-			log.Trace().Msg("@ all routers have stopped.. stopping runtime")
+			log.Trace().Msg("router: all routers have stopped.. stopping runtime")
 			runtime.Close()
 		}()
 	}
@@ -68,7 +68,7 @@ func (run *runningData) addRouter(r *Router) error {
 }
 
 func (run *runningData) Done(name string) {
-	log.Trace().Msgf("router %s is done", name)
+	log.Trace().Msgf("router: [%s] is done", name)
 	if run.wg == nil {
 		return
 	}
@@ -207,7 +207,7 @@ func (r *Router) Serve() error {
 	//r.router.Use(wrapWriterMW, log.NewHandler(), IDHandler(), accessLogger)
 
 	for _, route := range r.routes {
-		// log.Trace().Msgf("adding %s %s", route.Method, route.Path)
+		// log.Trace().Msgf("router: adding %s %s", route.Method, route.Path)
 		// h := r.router.NewRoute().Name(route.Name)
 		var method = "GET"
 
@@ -220,7 +220,7 @@ func (r *Router) Serve() error {
 		} else {
 			route.Path = r.prefix + route.Path
 		}
-		// log.Trace().Msgf("%s -> %s", route.Name, route.Path)
+		// log.Trace().Msgf("router: %s -> %s", route.Name, route.Path)
 
 		switch route.Path {
 		case r.readyPath:
@@ -248,11 +248,11 @@ func (r *Router) Serve() error {
 	}
 
 	if !haveHealty && r.healthPath != "" {
-		// log.Trace().Msg("adding /healtyz")
+		// log.Trace().Msg("router: adding /healtyz")
 		r.router.Get(r.healthPath, healthyProbe)
 	}
 	if !haveReady && r.readyPath != "" {
-		// log.Trace().Msg("adding /readyz")
+		// log.Trace().Msg("router: adding /readyz")
 		r.router.Get(r.readyPath, readyProbe)
 	}
 
@@ -263,7 +263,7 @@ func (r *Router) Serve() error {
 
 	runtime.OnClose("router_"+r.name, r.Shutdown)
 
-	log.Info().Msgf("listening to port %s:%d%s", "", r.port, r.prefix)
+	log.Info().Msgf("router: listening to port %s:%d%s", "", r.port, r.prefix)
 
 	r.server = &http.Server{Addr: fmt.Sprintf(":%d", r.port), Handler: r.router}
 	return r.server.ListenAndServe()
@@ -277,17 +277,17 @@ func (r *Router) Shutdown() {
 	if r.server == nil {
 		return
 	}
-	log.Trace().Msgf("router-shutdown initiated...")
+	log.Trace().Msg("router: shutdown initiated...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	err := r.server.Shutdown(ctx)
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		log.Error().Msgf("router-shutdown-error: %v", err)
+		log.Error().Msgf("router: shutdown-error: %v", err)
 	}
 	r.server = nil
-	log.Trace().Msgf("router-shutdown complete")
+	log.Trace().Msg("router: shutdown complete")
 }
 
 func (rt *Route) wrapHandler() http.HandlerFunc {
@@ -327,9 +327,9 @@ func (rt *Route) wrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// log.Trace().Msgf("wrap - calling...")
+	// log.Trace().Msgf("router: wrap - calling...")
 	results := rt.fnValue.Call(args)
-	// log.Trace().Msgf("wrap - result: %d values", len(results))
+	// log.Trace().Msgf("router: wrap - result: %d values", len(results))
 
 	var status int
 	var data interface{}
@@ -340,15 +340,15 @@ func (rt *Route) wrap(w http.ResponseWriter, r *http.Request) {
 			switch v := o.(type) {
 			case error:
 				err = v
-				// log.Debug().Msgf("#%d: error  = %v", i, err)
+				// log.Debug().Msgf("router: #%d: error  = %v", i, err)
 			case int:
 				status = v
-				// log.Debug().Msgf("#%d: status = %+v", i, status)
+				// log.Debug().Msgf("router: #%d: status = %+v", i, status)
 			default:
 				if v != nil { // this stop nil-error to be parsed as data
 					data = v
 				}
-				// log.Debug().Msgf("#%d: data   = %+v", i, data)
+				// log.Debug().Msgf("router: #%d: data   = %+v", i, data)
 			}
 		}
 	}
