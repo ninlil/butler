@@ -15,6 +15,7 @@ const (
 	fromQuery
 	fromHeader
 	fromBody
+	fromCookie
 )
 
 type tagInfo struct {
@@ -44,6 +45,8 @@ func parseTag(st reflect.StructTag) *tagInfo {
 		tags.From = fromQuery
 	case from == "body":
 		tags.From = fromBody
+	case from == "cookie":
+		tags.From = fromCookie
 	default:
 		tags.From = fromPath
 	}

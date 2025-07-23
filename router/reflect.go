@@ -79,6 +79,14 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 		value = r.Header.Get(tags.Name)
 		found = value != ""
 
+	case fromCookie:
+		var cookie *http.Cookie
+		cookie, err = r.Cookie(tags.Name)
+		if err == nil {
+			value = cookie.Value
+			found = value != ""
+		}
+
 	case fromQuery:
 		if param.query == nil {
 			param.query = r.URL.Query()
