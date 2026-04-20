@@ -67,3 +67,29 @@ func TestWithLevel(t *testing.T) {
 
 	zlog.Logger = orgLogger
 }
+
+func TestTranslateLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		input Level
+		want  zerolog.Level
+	}{
+		{"TraceLevel", TraceLevel, zerolog.TraceLevel},
+		{"DebugLevel", DebugLevel, zerolog.DebugLevel},
+		{"InfoLevel", InfoLevel, zerolog.InfoLevel},
+		{"WarnLevel", WarnLevel, zerolog.WarnLevel},
+		{"ErrorLevel", ErrorLevel, zerolog.ErrorLevel},
+		{"PanicLevel", PanicLevel, zerolog.PanicLevel},
+		{"FatalLevel", FatalLevel, zerolog.FatalLevel},
+		{"above-trace clamps", Level(9), zerolog.TraceLevel},
+		{"below-fatal clamps", Level(-1), zerolog.FatalLevel},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := translateLevel(tt.input)
+			if got != tt.want {
+				t.Errorf("translateLevel(%d) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}

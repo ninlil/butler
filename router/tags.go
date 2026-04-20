@@ -193,7 +193,7 @@ func (tag *tagInfo) string(f reflect.Value, txt string, force bool) error {
 			if err != nil {
 				return err
 			}
-			if int64(len(txt)) < maxV {
+			if int64(len(txt)) > maxV {
 				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgAboveMax, maxV))
 			}
 		}
@@ -226,7 +226,7 @@ func (tag *tagInfo) bytes(f reflect.Value, txt string, force bool) error {
 			if err != nil {
 				return err
 			}
-			if int64(len(buf)) < maxV {
+			if int64(len(buf)) > maxV {
 				return newFieldError(nil, tag.Name, txt, fmt.Sprintf(errMsgAboveMax, maxV))
 			}
 		}
