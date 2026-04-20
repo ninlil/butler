@@ -71,7 +71,7 @@ var Articles = []Article{
 	{Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
 }
 
-func returnAllArticles(w http.ResponseWriter) []Article {
+func returnAllArticles() []Article {
 	return Articles
 }
 
@@ -91,12 +91,12 @@ func returnRangeArticles(args *rangeArgs) ([]Article, error) {
 }
 
 type oneArgs struct {
-	Index int `json:"index" from:"url" min:"0"`
+	Index int `json:"index" from:"path" min:"0"`
 }
 
 func returnOneArticle(args *oneArgs) (*Article, int, error) {
 	if args.Index >= len(Articles) {
-		panic(fmt.Sprintf("error: index out-of-range: %d", args.Index))
+		return nil, http.StatusNotFound, fmt.Errorf("error: index out-of-range: %d", args.Index)
 	}
 	return &Articles[args.Index], 0, nil
 }

@@ -2,9 +2,9 @@
 Go-framework for cloud/kubernetes-friendly microservices
 
 ## Why?
-This package is meant to streamline the development of simple microservice without requiring each developer to handle the overhead of parsing http-headers, request- and response-body.
+This package is meant to streamline the development of simple microservices without requiring each developer to handle the overhead of parsing http-headers, request- and response-body.
 
-My definition of a successful microservice, specially in kubernetes is this:
+My definition of a successful microservice, especially in kubernetes is this:
 - Handles the health-probes
 - Separate response-status by 'Data found', 'Data not found/No-data' and 'Route/handler not found'
 - Handle different encodings on both request- and response-body
@@ -17,8 +17,8 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 ## Features
 
 ### Router
-- Gracefull shutdown of http-server
-- Liveness and Readyness-probes for Kubernetes
+- Graceful shutdown of http-server
+- Liveness and Readiness-probes for Kubernetes
 - Parameter-validation
   - min/max and default-values
   - optional or required
@@ -38,7 +38,6 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 ### ...planned for future updates
 - Metrics for Prometheus
 - More dataformats (yaml, toml)
-- Regex-validation of parameters
 - Support custom datatypes (ex: UUID)
 - More documentation
 - ETag-calculation
@@ -47,6 +46,8 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 ## Examples
 - [Misc. router-example](examples/example)
 - [Worker-demo](examples/workers1)
+- [File-serving](examples/files)
+- [Regex validation](examples/regex)
 
 ### HelloWorld
 ```go
@@ -63,7 +64,7 @@ var routes = []router.Route{
 func main() {
 	defer butler.Cleanup(nil)
 
-	err := router.Serve(routes, 10000)
+	err := router.Serve(routes, router.WithPort(10000))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -95,7 +96,7 @@ type handlerResult struct {
 
 func handler(ctx context.Context, args *handlerArgs) *handlerResult {
 	log := log.FromCtx(ctx)
-	log.Info().Msgf("handler called with a=%v and b=%v", args.B, args.B)
+	log.Info().Msgf("handler called with a=%v and b=%v", args.A, args.B)
 	return &handlerResult{
 		Sum: args.A + args.B,
 	}
@@ -119,7 +120,7 @@ Connection: close
 ```
 and the log also prints (to console/tty)
 ```
-13:57:17.351 INF handler called with a=0.14 and b=0.14 corr_id=...tas0 req_id=...tas0
+13:57:17.351 INF handler called with a=3 and b=0.14 corr_id=...tas0 req_id=...tas0
 ```
 
 ## External packages

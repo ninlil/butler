@@ -2,7 +2,7 @@
 
 Routes are defined as follows:
 ```go
-var routes = []routers.Route{
+var routes = []router.Route{
 	{Name: "hello", Method: "GET", Path: "/", Handler: helloWorld},
 }
 ```
@@ -12,7 +12,7 @@ var routes = []routers.Route{
 |---------|-------------|----------------------------------------------------------|
 | Name    | string      | Name of route, used for logging                          |
 | Method  | string      | HTTP-method (GET, POST a.s.o), "*" for any method        |
-| Path    | string      | The path/url, syntax according to github.com/gorilla/mux |
+| Path    | string      | The path/url, syntax according to github.com/go-chi/chi  |
 | Handler | interface{} | Handler function                                         |
 
 ## Handlers
@@ -35,8 +35,8 @@ A handler can return up to 3 different values:
 Default status-code when status is not used or returned as '0'
 | Status          | Situation                            |
 |-----------------|--------------------------------------|
-| 200 Ok          | Succefull call with data in body     |
-| 204 No content  | Succefull call, but no data returned |
+| 200 Ok          | Successful call with data in body     |
+| 204 No content  | Successful call, but no data returned |
 | 400 Bad Request | Error returned, with message in body |
 
 ## Getting input
@@ -61,13 +61,14 @@ Requirement:
 - bool
 - []byte
 - time.Time
+- time.Duration
 - struct or *struct (currently only for `from:"body"`)
 
 
 ### Tags
 | Tag      | Description          | Options |
 |----------|----------------------|---------|
-| from     | Source of parameter  | "path", "query", "header" or "body" |
+| from     | Source of parameter  | "path", "query", "header", "body" or "cookie" |
 | json     | Name of parameter    | Required for all but `from:"body"` |
 | default  | Default value if not specified in request | |
 | required | If exists, then the parameter must be specified in the request | |
@@ -88,7 +89,7 @@ The routers is implemented with a 'graceful shutdown method' allowing all runnin
 ### Manual shutdown
 If you want to shutdown a router manually then you call the `router.Shutdown()` method.
 
-> The method is syncronuous.
+> The method is synchronous.
 > If you want to to this inside a handler you need to run it using a goroutine:
 > ```go
 > func shutdownHandler() {

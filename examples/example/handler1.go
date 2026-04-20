@@ -11,8 +11,8 @@ type handlerArgs struct {
 }
 
 type sumArgs struct {
-	A float64 `from:"query" json:"a" required:""`
-	B float64 `from:"query" json:"b" required:""`
+	A float64 `json:"a"`
+	B float64 `json:"b"`
 }
 
 type handlerResult struct {

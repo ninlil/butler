@@ -34,7 +34,7 @@ func filesHandler(w http.ResponseWriter, r *http.Request) int {
 }
 
 func main() {
-	butler.Cleanup(nil)
+	defer butler.Cleanup(nil)
 
 	err := router.Serve(routes)
 	if err != nil {

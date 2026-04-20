@@ -15,7 +15,7 @@ func main() {
 	defer butler.Cleanup(nil)
 
   // the router will serve liveness/readiness-probes while running
-	err := router.Serve(routes, 10000)
+	err := router.Serve(routes, router.WithPort(10000))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -53,7 +53,7 @@ Just set the `workers.OnDone` to either `ContinueOnDone` or `ReadyOnDone` to cha
 func main() {
 	defer butler.Cleanup(nil)
 
-	err := router.Serve(routes, 10000)
+	err := router.Serve(routes, router.WithPort(10000))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
