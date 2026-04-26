@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/http"
 	"net/url"
 )
 
@@ -95,6 +96,18 @@ func WithoutReady() Option {
 func WithExposedErrors() Option {
 	return func(r *Router) error {
 		r.exposedErrors = true
+		return nil
+	}
+}
+
+// WithMiddleware adds one or more standard http middleware functions to the router chain.
+// Middlewares are applied in order, after the built-in logging/ID/panic-recovery chain
+// and before each route handler. The signature matches the chi/stdlib convention:
+//
+//	func(next http.Handler) http.Handler
+func WithMiddleware(mw ...func(http.Handler) http.Handler) Option {
+	return func(r *Router) error {
+		r.middlewares = append(r.middlewares, mw...)
 		return nil
 	}
 }

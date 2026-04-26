@@ -34,6 +34,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Wrapped handling of `Request-Id` and `Correlation-Id`
 - Automatic log-support with json to pipe/stream and pretty-printed to console/tty
 - Automatic `204 'No Content'` on empty result
+- Middleware support via `WithMiddleware` — compatible with any `func(http.Handler) http.Handler` middleware
 
 ### Workers
 
@@ -55,6 +56,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - [Worker-demo](examples/workers1)
 - [File-serving](examples/files)
 - [Regex validation](examples/regex)
+- [Middleware](examples/middleware)
 
 ### HelloWorld
 

@@ -111,6 +111,7 @@ type Router struct {
 	prefix        string
 	exposedErrors bool
 	skip204       bool
+	middlewares   []func(http.Handler) http.Handler
 
 	// runtime
 	router *http.ServeMux
@@ -238,7 +239,11 @@ func (r *Router) Serve() error {
 		// chain = chain.Append(hlog.RefererHandler("referer"))
 		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 
-		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
+		chain = chain.Append(r.panicHandler)
+		for _, mw := range r.middlewares {
+			chain = chain.Append(alice.Constructor(mw))
+		}
+		handler := chain.ThenFunc(route.wrapHandler())
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 

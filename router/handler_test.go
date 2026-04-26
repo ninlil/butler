@@ -35,7 +35,11 @@ func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 		chain = chain.Append(log.NewHandler())
 		chain = chain.Append(IDHandler())
 		chain = chain.Append(accessLogger)
-		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
+		chain = chain.Append(r.panicHandler)
+		for _, mw := range r.middlewares {
+			chain = chain.Append(alice.Constructor(mw))
+		}
+		handler := chain.ThenFunc(route.wrapHandler())
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router
@@ -64,7 +68,11 @@ func buildTestHandlerWithOpts(t *testing.T, routes []Route, extra ...Option) htt
 		chain = chain.Append(log.NewHandler())
 		chain = chain.Append(IDHandler())
 		chain = chain.Append(accessLogger)
-		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
+		chain = chain.Append(r.panicHandler)
+		for _, mw := range r.middlewares {
+			chain = chain.Append(alice.Constructor(mw))
+		}
+		handler := chain.ThenFunc(route.wrapHandler())
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router

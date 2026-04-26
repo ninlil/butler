@@ -95,6 +95,37 @@ You can also get the raw data in the following formats:
 - `string` — data as a Go string
 - `[]string` — a scanner parses multiline text into an array of strings
 
+## Middleware
+
+Standard `func(http.Handler) http.Handler` middleware functions can be added with
+`WithMiddleware`. They run for every route, in the order they are registered, after
+butler's built-in chain (writer-wrapping → logging → request-ID → access-log →
+panic-recovery) and before the route handler.
+
+```go
+router.Serve(routes,
+    router.WithPort(10000),
+    router.WithMiddleware(
+        timingMiddleware,
+        apiKeyMiddleware,
+    ),
+)
+```
+
+`WithMiddleware` may be called multiple times; middlewares accumulate in order.
+
+Because user middlewares sit inside the panic-recovery layer, a panic in your
+middleware is caught and returns `500` rather than crashing the server.
+
+The zerolog logger (and the request/correlation IDs) are already attached to the
+`context.Context` by the time your middleware runs, so `log.FromCtx(ctx)` works
+without any extra setup.
+
+Any middleware that matches the `func(http.Handler) http.Handler` signature works —
+including middleware from chi, gorilla/handlers, or the standard library.
+
+See [examples/middleware](../examples/middleware) for a runnable example.
+
 ## Shutdown
 
 The router is implemented with a graceful shutdown method, allowing all running handlers to complete (within 2 minutes) before the server is terminated. New connections are not accepted during this phase.
