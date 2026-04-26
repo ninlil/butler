@@ -16,6 +16,7 @@ const (
 	fromHeader
 	fromBody
 	fromCookie
+	fromForm
 )
 
 type tagInfo struct {
@@ -47,6 +48,8 @@ func parseTag(st reflect.StructTag) *tagInfo {
 		tags.From = fromBody
 	case from == "cookie":
 		tags.From = fromCookie
+	case from == "form":
+		tags.From = fromForm
 	default:
 		tags.From = fromPath
 	}

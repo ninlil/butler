@@ -27,6 +27,8 @@ var routes = []router.Route{
 	{Name: "body_bytes", Method: "POST", Path: "/body/bytes", Handler: bodyBytes},
 	{Name: "body_string", Method: "POST", Path: "/body/string", Handler: bodyString},
 	{Name: "body_strings", Method: "POST", Path: "/body/strings", Handler: bodyStrings},
+
+	{Name: "form_post", Method: "POST", Path: "/form/post", Handler: formPost},
 }
 
 func main() {

@@ -87,6 +87,10 @@ func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request
 			found = value != ""
 		}
 
+	case fromForm:
+		value = r.PostFormValue(tags.Name)
+		found = value != ""
+
 	case fromQuery:
 		if param.query == nil {
 			param.query = r.URL.Query()
@@ -171,7 +175,7 @@ func getBodyValue(f reflect.Value, r *http.Request) (value string, found bool, h
 			body = reflect.New(f.Type().Elem()).Interface()
 		}
 
-		ctf, _, _ := getContentTypeFormat(r.Header.Get("Content-Type"))
+		ctf, _, _ := getContentTypeFormat(r.Header.Get("Content-Type"), "request", r.URL.String())
 		err = ctf.Unmarshal(raw, body)
 		if err != nil {
 			return

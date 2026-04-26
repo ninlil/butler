@@ -26,7 +26,7 @@ func TestGetContentTypeFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctf, indent, isCustom := getContentTypeFormat(tc.accept)
+			ctf, indent, isCustom := getContentTypeFormat(tc.accept, "", "")
 			if ctf != tc.wantCTF {
 				t.Errorf("ctf = %v, want %v", ctf, tc.wantCTF)
 			}
@@ -49,7 +49,7 @@ type testStruct struct {
 func TestCreateResponse(t *testing.T) {
 	t.Run("JSON marshal of struct", func(t *testing.T) {
 		data := testStruct{Name: "foo", Value: 42}
-		buf, ct, _, err := createResponse("application/json", data)
+		buf, ct, _, err := createResponse("application/json", data, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -70,7 +70,7 @@ func TestCreateResponse(t *testing.T) {
 
 	t.Run("XML marshal of struct", func(t *testing.T) {
 		data := testStruct{Name: "bar", Value: 7}
-		buf, ct, _, err := createResponse("application/xml", data)
+		buf, ct, _, err := createResponse("application/xml", data, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -87,7 +87,7 @@ func TestCreateResponse(t *testing.T) {
 	})
 
 	t.Run("text/plain with string", func(t *testing.T) {
-		buf, ct, _, err := createResponse("text/plain", "hello")
+		buf, ct, _, err := createResponse("text/plain", "hello", "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestCreateResponse(t *testing.T) {
 	})
 
 	t.Run("text/plain with []string", func(t *testing.T) {
-		buf, _, _, err := createResponse("text/plain", []string{"line1", "line2", "line3"})
+		buf, _, _, err := createResponse("text/plain", []string{"line1", "line2", "line3"}, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -112,7 +112,7 @@ func TestCreateResponse(t *testing.T) {
 
 	t.Run("raw []byte returned as-is", func(t *testing.T) {
 		raw := []byte{0x01, 0x02, 0x03}
-		buf, _, _, err := createResponse("application/json", raw)
+		buf, _, _, err := createResponse("application/json", raw, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -122,7 +122,7 @@ func TestCreateResponse(t *testing.T) {
 	})
 
 	t.Run("nil data with no custom Accept", func(t *testing.T) {
-		buf, _, _, err := createResponse("", nil)
+		buf, _, _, err := createResponse("", nil, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

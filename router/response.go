@@ -40,14 +40,14 @@ func (ctf ctFormat) Unmarshal(buf []byte, dest interface{}) error {
 	return nil
 }
 
-func getContentTypeFormat(format string) (ctf ctFormat, indent int, isCustom bool) {
+func getContentTypeFormat(format, what, where string) (ctf ctFormat, indent int, isCustom bool) {
 	ctf = ctfJSON
 	indent = 0
 
 	if format != "" {
 		media, params, err := mime.ParseMediaType(format)
 		if err != nil {
-			log.Warn().Msgf("router: Accept/Content-type - error: %v", err)
+			log.Warn().Msgf("router: Accept/Content-type - error: %v (%s %s %q)", err, what, where, format)
 		}
 		switch media {
 		case "application/json":
@@ -69,8 +69,8 @@ func getContentTypeFormat(format string) (ctf ctFormat, indent int, isCustom boo
 	return
 }
 
-func createResponse(accept string, data interface{}) (buf []byte, ct string, indent int, err error) {
-	ctf, indent, isCustom := getContentTypeFormat(accept)
+func createResponse(accept string, data interface{}, url string) (buf []byte, ct string, indent int, err error) {
+	ctf, indent, isCustom := getContentTypeFormat(accept, "response", url)
 
 	if tmp, ok := data.([]byte); ok {
 		buf = tmp
@@ -115,7 +115,7 @@ func (rt *Route) writeResponse(w http.ResponseWriter, r *http.Request, status in
 		w2, _ = bufferedresponse.Get(w)
 	}
 
-	buf, ct, indent, err := createResponse(r.Header.Get("Accept"), data)
+	buf, ct, indent, err := createResponse(r.Header.Get("Accept"), data, r.URL.String())
 
 	if err != nil {
 		rt.writeError(err, w, r, http.StatusInternalServerError)

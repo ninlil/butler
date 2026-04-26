@@ -1,6 +1,7 @@
 package router
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestIsValidProbePath(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := isValidProbePath(tc.path)
-			if err != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("isValidProbePath(%q) = %v, want %v", tc.path, err, tc.wantErr)
 			}
 		})
@@ -39,14 +40,14 @@ func TestWithPort(t *testing.T) {
 
 	t.Run("zero port", func(t *testing.T) {
 		r := &Router{}
-		if err := WithPort(0)(r); err != ErrorInvalidPort {
+		if err := WithPort(0)(r); !errors.Is(err, ErrorInvalidPort) {
 			t.Errorf("WithPort(0) = %v, want ErrorInvalidPort", err)
 		}
 	})
 
 	t.Run("negative port", func(t *testing.T) {
 		r := &Router{}
-		if err := WithPort(-1)(r); err != ErrorInvalidPort {
+		if err := WithPort(-1)(r); !errors.Is(err, ErrorInvalidPort) {
 			t.Errorf("WithPort(-1) = %v, want ErrorInvalidPort", err)
 		}
 	})
@@ -65,7 +66,7 @@ func TestWithPrefix(t *testing.T) {
 
 	t.Run("no leading slash", func(t *testing.T) {
 		r := &Router{}
-		if err := WithPrefix("api")(r); err != ErrorRequireLeadingSlash {
+		if err := WithPrefix("api")(r); !errors.Is(err, ErrorRequireLeadingSlash) {
 			t.Errorf("WithPrefix(\"api\") = %v, want ErrorRequireLeadingSlash", err)
 		}
 	})
@@ -84,7 +85,7 @@ func TestWithHealth(t *testing.T) {
 
 	t.Run("no leading slash", func(t *testing.T) {
 		r := &Router{}
-		if err := WithHealth("healthz")(r); err != ErrorRequireLeadingSlash {
+		if err := WithHealth("healthz")(r); !errors.Is(err, ErrorRequireLeadingSlash) {
 			t.Errorf("WithHealth(\"healthz\") = %v, want ErrorRequireLeadingSlash", err)
 		}
 	})
@@ -103,7 +104,7 @@ func TestWithReady(t *testing.T) {
 
 	t.Run("no leading slash", func(t *testing.T) {
 		r := &Router{}
-		if err := WithReady("readyz")(r); err != ErrorRequireLeadingSlash {
+		if err := WithReady("readyz")(r); !errors.Is(err, ErrorRequireLeadingSlash) {
 			t.Errorf("WithReady(\"readyz\") = %v, want ErrorRequireLeadingSlash", err)
 		}
 	})

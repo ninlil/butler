@@ -77,7 +77,7 @@ func newIntField() reflect.Value {
 	return reflect.ValueOf(&i).Elem()
 }
 
-func TestTagInfo_Int(t *testing.T) {
+func TestTagInfo_Int(t *testing.T) { //nolint:dupl
 	tests := []struct {
 		name    string
 		tag     tagInfo
@@ -114,7 +114,7 @@ func newFloatField() reflect.Value {
 	return reflect.ValueOf(&f).Elem()
 }
 
-func TestTagInfo_Float(t *testing.T) {
+func TestTagInfo_Float(t *testing.T) { //nolint:dupl
 	tests := []struct {
 		name    string
 		tag     tagInfo

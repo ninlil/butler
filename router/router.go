@@ -292,9 +292,11 @@ func (r *Router) Shutdown() {
 
 func (rt *Route) wrapHandler() http.HandlerFunc {
 	if rt.isRaw {
+		log.Trace().Msgf("router: %s %s is a raw handler, no wrapping needed", rt.Method, rt.Path)
 		return rt.Handler.(func(http.ResponseWriter, *http.Request))
 	}
 
+	log.Trace().Msgf("router: wrapping %s %s", rt.Method, rt.Path)
 	return func(w http.ResponseWriter, r *http.Request) {
 		rt.wrap(w, r)
 	}

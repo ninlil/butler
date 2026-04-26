@@ -14,9 +14,9 @@ import (
 
 // buildTestHandler sets up a Router's chi mux with routes and returns the http.Handler.
 // It mirrors the route-setup portion of Serve() without binding a real TCP port.
-func buildTestHandler(t *testing.T, routes []Route, opts ...Option) http.Handler {
+func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 	t.Helper()
-	allOpts := append([]Option{WithPort(9999)}, opts...)
+	allOpts := []Option{WithPort(9999)}
 	r, err := New(routes, allOpts...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -92,7 +92,7 @@ func handlerBody(args *bodyArgs) testItem {
 }
 
 type headerArgs struct {
-	Token string `json:"X-Token" from:"header"`
+	Token string `json:"X-Token" from:"header"` //nolint:tagliatelle
 }
 
 func handlerHeader(args *headerArgs) string {
