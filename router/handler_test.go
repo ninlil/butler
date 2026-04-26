@@ -12,7 +12,7 @@ import (
 	"github.com/ninlil/butler/log"
 )
 
-// buildTestHandler sets up a Router's chi mux with routes and returns the http.Handler.
+// buildTestHandler sets up a Router's ServeMux with routes and returns the http.Handler.
 // It mirrors the route-setup portion of Serve() without binding a real TCP port.
 func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 	t.Helper()
@@ -36,11 +36,7 @@ func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 		chain = chain.Append(IDHandler())
 		chain = chain.Append(accessLogger)
 		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
-		if method == "*" {
-			r.router.Handle(route.Path, handler)
-		} else {
-			r.router.Method(method, route.Path, handler)
-		}
+		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router
 }
@@ -69,11 +65,7 @@ func buildTestHandlerWithOpts(t *testing.T, routes []Route, extra ...Option) htt
 		chain = chain.Append(IDHandler())
 		chain = chain.Append(accessLogger)
 		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
-		if method == "*" {
-			r.router.Handle(route.Path, handler)
-		} else {
-			r.router.Method(method, route.Path, handler)
-		}
+		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router
 }
@@ -99,11 +91,10 @@ func handlerTeamUser(args *teamUserArgs) testItem {
 	return testItem{ID: 1, Name: args.Team + "/" + args.User}
 }
 
-// wildcardSuffixArgs / handlerWildcardValue — reads the chi catch-all segment.
-// chi stores "/*" wildcards under key "*"; after migration to "/{urlsuffix...}"
-// the tag must be updated to json:"urlsuffix".
+// wildcardSuffixArgs / handlerWildcardValue — reads the catch-all path segment.
+// ServeMux matches "/*" patterns as "/{urlsuffix...}"; the value is bound via json:"urlsuffix".
 type wildcardSuffixArgs struct {
-	Suffix string `json:"*" from:"path"`
+	Suffix string `json:"urlsuffix" from:"path"`
 }
 
 func handlerWildcardValue(args *wildcardSuffixArgs) string {
@@ -385,9 +376,8 @@ func TestHandlerBodyMissingStruct(t *testing.T) {
 }
 
 // =============================================================================
-// Migration baseline tests — establish chi behaviour before switching to stdlib.
-// All tests below must pass before migration begins and must continue to pass
-// after chi is removed, except where a comment explicitly notes a known change.
+// Router behaviour tests — verify ServeMux routing, path params, wildcards, and
+// method matching behave as expected.
 // =============================================================================
 
 // --- path-parameter binding ---
@@ -454,9 +444,8 @@ func TestWildcardPrefix(t *testing.T) {
 }
 
 func TestWildcardPathValue(t *testing.T) {
-	// handlerWildcardValue reads args.Suffix which is bound via json:"*" from:"path".
-	// chi stores the catch-all segment under key "*".
-	// After migration to "/{urlsuffix...}", update the tag to json:"urlsuffix".
+	// handlerWildcardValue reads args.Suffix which is bound via json:"urlsuffix" from:"path".
+	// ServeMux stores catch-all "/*" segments under the key "urlsuffix" (from "/{urlsuffix...}").
 	h := buildTestHandler(t, []Route{
 		{Name: "files", Method: "*", Path: "/*", Handler: handlerWildcardValue},
 	})
@@ -487,9 +476,9 @@ func TestMethodMatch(t *testing.T) {
 }
 
 func TestMethodMismatch(t *testing.T) {
-	// chi returns 405 Method Not Allowed for a known path with an unregistered method.
-	// After migration to net/http ServeMux (Go 1.22+) this will become 404 Not Found.
-	// Update the expected status to http.StatusNotFound once the migration is complete.
+	// net/http ServeMux (Go 1.22+) returns 405 Method Not Allowed when a path is registered
+	// for a specific method and a request arrives with a different method. This matches chi's
+	// behaviour, so no status change was needed during the chi-to-stdlib migration.
 	h := buildTestHandler(t, []Route{
 		{Name: "get-only", Method: "GET", Path: "/get-only", Handler: handlerNoArgsNoReturn},
 	})
@@ -497,7 +486,7 @@ func TestMethodMismatch(t *testing.T) {
 	req := httptest.NewRequest("POST", "/get-only", nil)
 	h.ServeHTTP(w, req)
 	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("status = %d, want %d (chi: 405; stdlib after migration: 404)",
+		t.Errorf("status = %d, want %d",
 			w.Code, http.StatusMethodNotAllowed)
 	}
 }

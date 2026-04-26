@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/justinas/alice"
 	"github.com/ninlil/butler/log"
 	"github.com/ninlil/butler/runtime"
@@ -114,7 +113,7 @@ type Router struct {
 	skip204       bool
 
 	// runtime
-	router *chi.Mux
+	router *http.ServeMux
 	routes []*Route
 	server *http.Server
 	mutex  sync.Mutex
@@ -172,7 +171,7 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 		router.name = "default"
 	}
 
-	router.router = chi.NewRouter()
+	router.router = http.NewServeMux()
 
 	for i := range routes {
 		route := routes[i]
@@ -240,20 +239,16 @@ func (r *Router) Serve() error {
 		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
 
 		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
-		if method == "*" {
-			r.router.Handle(route.Path, handler) // allow any method
-		} else {
-			r.router.Method(method, route.Path, handler)
-		}
+		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 
 	if !haveHealty && r.healthPath != "" {
 		// log.Trace().Msg("router: adding /healtyz")
-		r.router.Get(r.healthPath, healthyProbe)
+		r.router.Handle("GET "+r.healthPath, http.HandlerFunc(healthyProbe))
 	}
 	if !haveReady && r.readyPath != "" {
 		// log.Trace().Msg("router: adding /readyz")
-		r.router.Get(r.readyPath, readyProbe)
+		r.router.Handle("GET "+r.readyPath, http.HandlerFunc(readyProbe))
 	}
 
 	if err := running.addRouter(r); err != nil {

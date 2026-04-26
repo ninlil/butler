@@ -2,8 +2,8 @@ package router
 
 import "strings"
 
-// convertPath translates a chi-style path to a Go 1.22+ ServeMux pattern.
-// Chi catch-all /* becomes /{urlsuffix...}; named params {name} are unchanged.
+// convertPath translates a butler path pattern to a Go 1.22+ ServeMux pattern.
+// The catch-all suffix /* becomes /{urlsuffix...}; named params {name} are unchanged.
 func convertPath(path string) string {
 	if strings.HasSuffix(path, "/*") {
 		return path[:len(path)-2] + "/{urlsuffix...}"

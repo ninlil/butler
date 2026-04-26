@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/ninlil/butler/log"
 )
 
@@ -18,7 +17,6 @@ type paramData struct {
 	ptr   reflect.Value
 	data  reflect.Value
 	dt    reflect.Type
-	vars  map[string]string
 	query url.Values
 }
 
@@ -66,14 +64,8 @@ func (rt *Route) createArgs(w http.ResponseWriter, r *http.Request) ([]reflect.V
 func (param *paramData) getValue(f reflect.Value, tags *tagInfo, r *http.Request) (value string, found bool, handled bool, err error) {
 	switch tags.From {
 	case fromPath:
-		if param.vars == nil {
-			params := chi.RouteContext(r.Context()).URLParams
-			param.vars = make(map[string]string, len(params.Keys))
-			for i, key := range params.Keys {
-				param.vars[key] = params.Values[i]
-			}
-		}
-		value, found = param.vars[tags.Name]
+		value = r.PathValue(tags.Name)
+		found = value != ""
 
 	case fromHeader:
 		value = r.Header.Get(tags.Name)
