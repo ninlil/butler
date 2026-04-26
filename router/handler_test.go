@@ -45,7 +45,70 @@ func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 	return r.router
 }
 
+// buildTestHandlerWithOpts is like buildTestHandler but accepts additional options
+// (e.g. WithPrefix). Used for the migration baseline tests.
+func buildTestHandlerWithOpts(t *testing.T, routes []Route, extra ...Option) http.Handler {
+	t.Helper()
+	allOpts := append([]Option{WithPort(9999)}, extra...)
+	r, err := New(routes, allOpts...)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	for _, route := range r.routes {
+		method := "GET"
+		if route.Method != "" {
+			method = route.Method
+		}
+		if route.Path == "/" && r.prefix != "" {
+			route.Path = r.prefix
+		} else {
+			route.Path = r.prefix + route.Path
+		}
+		chain := alice.New().Append(wrapWriterMW)
+		chain = chain.Append(log.NewHandler())
+		chain = chain.Append(IDHandler())
+		chain = chain.Append(accessLogger)
+		handler := chain.Append(r.panicHandler).ThenFunc(route.wrapHandler())
+		if method == "*" {
+			r.router.Handle(route.Path, handler)
+		} else {
+			r.router.Method(method, route.Path, handler)
+		}
+	}
+	return r.router
+}
+
 // --- test handlers and args structs ---
+
+// nameArgs / handlerName — single string path param for TestPathParamSingleString.
+type nameArgs struct {
+	Name string `json:"name" from:"path"`
+}
+
+func handlerName(args *nameArgs) string {
+	return args.Name
+}
+
+// teamUserArgs / handlerTeamUser — two path params for TestPathParamMultiple.
+type teamUserArgs struct {
+	Team string `json:"team" from:"path"`
+	User string `json:"user" from:"path"`
+}
+
+func handlerTeamUser(args *teamUserArgs) testItem {
+	return testItem{ID: 1, Name: args.Team + "/" + args.User}
+}
+
+// wildcardSuffixArgs / handlerWildcardValue — reads the chi catch-all segment.
+// chi stores "/*" wildcards under key "*"; after migration to "/{urlsuffix...}"
+// the tag must be updated to json:"urlsuffix".
+type wildcardSuffixArgs struct {
+	Suffix string `json:"*" from:"path"`
+}
+
+func handlerWildcardValue(args *wildcardSuffixArgs) string {
+	return args.Suffix
+}
 
 func handlerNoArgsNoReturn() {}
 
@@ -318,5 +381,180 @@ func TestHandlerBodyMissingStruct(t *testing.T) {
 	}
 	if got.ID != 0 || got.Name != "" {
 		t.Errorf("got %+v, want zero-value testItem{ID:0, Name:\"\"}", got)
+	}
+}
+
+// =============================================================================
+// Migration baseline tests — establish chi behaviour before switching to stdlib.
+// All tests below must pass before migration begins and must continue to pass
+// after chi is removed, except where a comment explicitly notes a known change.
+// =============================================================================
+
+// --- path-parameter binding ---
+
+func TestPathParamSingleString(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "user", Method: "GET", Path: "/users/{name}", Handler: handlerName},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/users/alice", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	name := strings.Trim(w.Body.String(), `"`+"\n")
+	if name != "alice" {
+		t.Errorf("name = %q, want %q", name, "alice")
+	}
+}
+
+func TestPathParamMultiple(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "team-user", Method: "GET", Path: "/teams/{team}/users/{user}", Handler: handlerTeamUser},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/teams/ops/users/alice", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var got testItem
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not valid JSON: %v", err)
+	}
+	if got.Name != "ops/alice" {
+		t.Errorf("name = %q, want %q", got.Name, "ops/alice")
+	}
+}
+
+// --- wildcard route matching ---
+
+func TestWildcardRoot(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "catch-all", Method: "*", Path: "/*", Handler: handlerReturnStatus},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/any/deep/path", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201 (wildcard route should match any path)", w.Code)
+	}
+}
+
+func TestWildcardPrefix(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "api-catch-all", Method: "*", Path: "/api/*", Handler: handlerReturnStatus},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v2/foo", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201 (prefixed wildcard route should match)", w.Code)
+	}
+}
+
+func TestWildcardPathValue(t *testing.T) {
+	// handlerWildcardValue reads args.Suffix which is bound via json:"*" from:"path".
+	// chi stores the catch-all segment under key "*".
+	// After migration to "/{urlsuffix...}", update the tag to json:"urlsuffix".
+	h := buildTestHandler(t, []Route{
+		{Name: "files", Method: "*", Path: "/*", Handler: handlerWildcardValue},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/files/a/b.txt", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	suffix := strings.Trim(w.Body.String(), `"`+"\n")
+	if !strings.Contains(suffix, "files") || !strings.Contains(suffix, "b.txt") {
+		t.Errorf("suffix = %q, want it to contain the request path segments", suffix)
+	}
+}
+
+// --- method routing ---
+
+func TestMethodMatch(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "match", Method: "GET", Path: "/match", Handler: handlerReturnStatus},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/match", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201", w.Code)
+	}
+}
+
+func TestMethodMismatch(t *testing.T) {
+	// chi returns 405 Method Not Allowed for a known path with an unregistered method.
+	// After migration to net/http ServeMux (Go 1.22+) this will become 404 Not Found.
+	// Update the expected status to http.StatusNotFound once the migration is complete.
+	h := buildTestHandler(t, []Route{
+		{Name: "get-only", Method: "GET", Path: "/get-only", Handler: handlerNoArgsNoReturn},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/get-only", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d (chi: 405; stdlib after migration: 404)",
+			w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestMethodWildcard(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "all-methods", Method: "*", Path: "/all-methods", Handler: handlerReturnStatus},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("DELETE", "/all-methods", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201 (wildcard method should accept DELETE)", w.Code)
+	}
+}
+
+func TestMethodWildcardGET(t *testing.T) {
+	h := buildTestHandler(t, []Route{
+		{Name: "all-methods-get", Method: "*", Path: "/all-methods-get", Handler: handlerReturnStatus},
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/all-methods-get", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201 (wildcard method should accept GET)", w.Code)
+	}
+}
+
+// --- route prefix combined with path parameters ---
+
+func TestPrefixWithPathParam(t *testing.T) {
+	h := buildTestHandlerWithOpts(t, []Route{
+		{Name: "prefixed-item", Method: "GET", Path: "/items/{id}", Handler: handlerPathParam},
+	}, WithPrefix("/api"))
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/items/7", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var got testItem
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not valid JSON: %v", err)
+	}
+	if got.ID != 7 {
+		t.Errorf("ID = %d, want 7", got.ID)
+	}
+}
+
+func TestPrefixWithWildcard(t *testing.T) {
+	h := buildTestHandlerWithOpts(t, []Route{
+		{Name: "prefixed-catch-all", Method: "*", Path: "/*", Handler: handlerReturnStatus},
+	}, WithPrefix("/api"))
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v2/anything", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != 201 {
+		t.Errorf("status = %d, want 201 (wildcard under prefix should match)", w.Code)
 	}
 }
