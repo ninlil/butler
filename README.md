@@ -1,10 +1,13 @@
 # butler
+
 Go-framework for cloud/kubernetes-friendly microservices
 
 ## Why?
+
 This package is meant to streamline the development of simple microservices without requiring each developer to handle the overhead of parsing http-headers, request- and response-body.
 
 My definition of a successful microservice, especially in kubernetes is this:
+
 - Handles the health-probes
 - Separate response-status by 'Data found', 'Data not found/No-data' and 'Route/handler not found'
 - Handle different encodings on both request- and response-body
@@ -17,6 +20,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 ## Features
 
 ### Router
+
 - Graceful shutdown of http-server
 - Liveness and Readiness-probes for Kubernetes
 - Parameter-validation
@@ -32,10 +36,12 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Automatic `204 'No Content'` on empty result
 
 ### Workers
+
 - Easy job/cronjob (run-then-exit) with health-probes
 - Startup/initialization-phase
 
 ### ...planned for future updates
+
 - Metrics for Prometheus
 - More dataformats (yaml, toml)
 - Support custom datatypes (ex: UUID)
@@ -44,66 +50,69 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Easily detect/handle closed/cancelled requests
 
 ## Examples
+
 - [Misc. router-example](examples/example)
 - [Worker-demo](examples/workers1)
 - [File-serving](examples/files)
 - [Regex validation](examples/regex)
 
 ### HelloWorld
+
 ```go
 import (
-	"github.com/ninlil/butler"
-	"github.com/ninlil/butler/log"
-	"github.com/ninlil/butler/router"
+  "github.com/ninlil/butler"
+  "github.com/ninlil/butler/log"
+  "github.com/ninlil/butler/router"
 )
 
 var routes = []router.Route{
-	{Name: "hello", Method: "GET", Path: "/", Handler: helloWorld},
+  {Name: "hello", Method: "GET", Path: "/", Handler: helloWorld},
 }
 
 func main() {
-	defer butler.Cleanup(nil)
+  defer butler.Cleanup(nil)
 
-	err := router.Serve(routes, router.WithPort(10000))
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
+  err := router.Serve(routes, router.WithPort(10000))
+  if err != nil {
+    log.Fatal().Msg(err.Error())
+  }
 
-	butler.Run()
+  butler.Run()
 }
 
 func helloWorld() string {
-	return "Hello World!"
+  return "Hello World!"
 }
 ```
 
 ### API with arguments and return-values
+
 ```go
 import (
-	"context"
+  "context"
 
-	"github.com/ninlil/butler/log"
+  "github.com/ninlil/butler/log"
 )
 
 type handlerArgs struct {
-	A float64 `from:"query" json:"a" required:""`
-	B float64 `from:"query" json:"b" required:""`
+  A float64 `from:"query" json:"a" required:""`
+  B float64 `from:"query" json:"b" required:""`
 }
 
 type handlerResult struct {
-	Sum float64 `json:"sum"`
+  Sum float64 `json:"sum"`
 }
 
 func handler(ctx context.Context, args *handlerArgs) *handlerResult {
-	log := log.FromCtx(ctx)
-	log.Info().Msgf("handler called with a=%v and b=%v", args.A, args.B)
-	return &handlerResult{
-		Sum: args.A + args.B,
-	}
+  log := log.FromCtx(ctx)
+  log.Info().Msgf("handler called with a=%v and b=%v", args.A, args.B)
+  return &handlerResult{
+    Sum: args.A + args.B,
+  }
 }
 ```
 
-```
+```text
 GET http://localhost/handler?a=3&b=0.14
 ---
 HTTP/1.1 200 OK
@@ -118,14 +127,16 @@ Connection: close
   "sum": 3.14
 }
 ```
+
 and the log also prints (to console/tty)
-```
+
+```text
 13:57:17.351 INF handler called with a=3 and b=0.14 corr_id=...tas0 req_id=...tas0
 ```
 
 ## External packages
-- github.com/go-chi/chi/v5 - is a lightweight, idiomatic and composable router for building Go HTTP services
--	github.com/justinas/alice - Painless middleware chaining for Go
--	github.com/rs/xid - xid is a globally unique id generator thought for the web
--	github.com/rs/zerolog - Zero Allocation JSON Logger
 
+- github.com/go-chi/chi/v5 - is a lightweight, idiomatic and composable router for building Go HTTP services
+- github.com/justinas/alice - Painless middleware chaining for Go
+- github.com/rs/xid - xid is a globally unique id generator thought for the web
+- github.com/rs/zerolog - Zero Allocation JSON Logger
