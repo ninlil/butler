@@ -14,7 +14,7 @@ var routes = []router.Route{
 |-----------|---------------|----------------------------------------------------------|
 | `Name`    | `string`      | Name of route, used for logging                          |
 | `Method`  | `string`      | HTTP method (GET, POST etc.), `"*"` for any method       |
-| `Path`    | `string`      | The path/URL, syntax according to github.com/go-chi/chi  |
+| `Path`    | `string`      | The path/URL, using `net/http.ServeMux` pattern syntax   |
 | `Handler` | `interface{}` | Handler function                                         |
 
 ## Handlers

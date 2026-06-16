@@ -27,7 +27,7 @@ func WithPrefix(path string) Option {
 	}
 }
 
-// WithStrictSlash sets the StrictSlash-option on the gorilla/mux router
+// WithStrictSlash sets the StrictSlash-option on the router
 func WithStrictSlash(flag bool) Option {
 	return func(r *Router) error {
 		r.strictSlash = flag

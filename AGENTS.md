@@ -1,6 +1,6 @@
 # Butler – AI Agent Instructions
 
-Butler is a Go framework for building cloud/Kubernetes-friendly microservices. It wraps `go-chi/chi` with automatic parameter binding, structured logging, graceful shutdown, and background workers.
+Butler is a Go framework for building cloud/Kubernetes-friendly microservices. It wraps the standard library `net/http.ServeMux` with automatic parameter binding, structured logging, graceful shutdown, and background workers.
 
 ## Build & Lint
 
@@ -50,7 +50,7 @@ var routes = []router.Route{
 }
 ```
 
-Path parameters use `{param}` (chi v5 syntax).
+Path parameters use `{param}` (Go 1.22+ `net/http.ServeMux` pattern syntax).
 
 ## Handler Signatures
 
