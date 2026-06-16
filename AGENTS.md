@@ -14,14 +14,14 @@ No code generation step is required. Go version: `1.24`.
 
 ## Packages
 
-| Package | Role |
-|---|---|
-| `router/` | HTTP routing, parameter binding, response serialization |
-| `workers/` | Background goroutine manager |
-| `log/` | Zerolog wrapper with request-context propagation |
-| `runtime/` | Shutdown hook registry |
-| `bufferedresponse/` | Buffered `ResponseWriter` wrapper |
-| root | `butler.Run()` / `butler.Cleanup()` lifecycle entry points |
+| Package             | Role                                                       |
+|---------------------|------------------------------------------------------------|
+| `router/`           | HTTP routing, parameter binding, response serialization    |
+| `workers/`          | Background goroutine manager                               |
+| `log/`              | Zerolog wrapper with request-context propagation           |
+| `runtime/`          | Shutdown hook registry                                     |
+| `bufferedresponse/` | Buffered `ResponseWriter` wrapper                          |
+| root                | `butler.Run()` / `butler.Cleanup()` lifecycle entry points |
 
 See [docs/router.md](docs/router.md) and [docs/workers.md](docs/workers.md) for detailed docs.
 
@@ -57,12 +57,14 @@ Path parameters use `{param}` (Go 1.22+ `net/http.ServeMux` pattern syntax).
 Return values and arguments may appear in any order. The framework uses reflection to wire them.
 
 **Accepted arguments** (zero or more, any order):
+
 - `context.Context`
 - `http.ResponseWriter`
 - `*http.Request`
 - Custom `struct` or `*struct` (auto-parsed from request)
 
 **Accepted return values** (zero to three, any order):
+
 - `int` – HTTP status code (0 = automatic: 200 or 204)
 - `error` – serialized as `{"error":"…"}` with status 400
 - `interface{}` / any concrete type – serialized response body
@@ -85,14 +87,14 @@ type itemArgs struct {
 }
 ```
 
-| Tag | Values | Notes |
-|---|---|---|
-| `from` | `path`, `query`, `header`, `body`, `cookie` | Required for non-path params |
-| `json` | param name | Maps request field to struct field |
-| `required` | (empty string) | Parameter must be present |
-| `min` / `max` | number, duration, string length | Validated before handler runs |
-| `default` | any value | Used when parameter is absent |
-| `regex` | pattern | Validated before type conversion |
+| Tag           | Values                                              | Notes                              |
+|---------------|-----------------------------------------------------|------------------------------------|
+| `from`        | `path`, `query`, `header`, `body`, `cookie`, `form` | Required for non-path params       |
+| `json`        | param name                                          | Maps request field to struct field |
+| `required`    | (empty string)                                      | Parameter must be present          |
+| `min` / `max` | number, duration, string length                     | Validated before handler runs      |
+| `default`     | any value                                           | Used when parameter is absent      |
+| `regex`       | pattern                                             | Validated before type conversion   |
 
 **Supported field types:** `int*`, `float*`, `string`, `bool`, `time.Time`, `time.Duration`, `[]byte`, `[]string`, `map[string]interface{}`, `struct` / `*struct` (body only).
 

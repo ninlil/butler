@@ -77,14 +77,14 @@ Requirement:
 
 ### Tags
 
-| Tag        | Description                                        | Options                                               |
-|------------|----------------------------------------------------|-------------------------------------------------------|
-| `from`     | Source of parameter                                | `"path"`, `"query"`, `"header"`, `"body"`, `"cookie"` |
-| `json`     | Name of parameter                                  | Required for all but `from:"body"`                    |
-| `default`  | Default value if not specified in request          |                                                       |
-| `required` | If present, the parameter must be in the request   |                                                       |
-| `min`/`max`| Numerical min/max limit, or string length          |                                                       |
-| `regex`    | Regexp matching of value before type conversion    |                                                       |
+| Tag         | Description                                      | Options                                                         |
+|-------------|--------------------------------------------------|-----------------------------------------------------------------|
+| `from`      | Source of parameter                              | `"path"`, `"query"`, `"header"`, `"body"`, `"cookie"`, `"form"` |
+| `json`      | Name of parameter                                | Required for all but `from:"body"`                              |
+| `default`   | Default value if not specified in request        |                                                                 |
+| `required`  | If present, the parameter must be in the request |                                                                 |
+| `min`/`max` | Numerical min/max limit, or string length        |                                                                 |
+| `regex`     | Regexp matching of value before type conversion  |                                                                 |
 
 ### Reading the body
 
