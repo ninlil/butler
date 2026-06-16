@@ -26,7 +26,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Parameter-validation
   - min/max and default-values
   - optional or required
-  - from `path`, `query`, `header` or `body`
+  - from `path`, `query`, `header`, `cookie`, `form` or `body`
 - Handle the `Accept` & `Content-Type` headers (json, xml)
 - Enable handlers to use functional-programming
   - Return the actual result

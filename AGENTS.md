@@ -10,7 +10,7 @@ go test ./...
 make check   # golangci-lint + gocyclo (threshold: 15)
 ```
 
-No code generation step is required. Go version: `1.24`.
+No code generation step is required. Go version: `1.26`.
 
 ## Packages
 
