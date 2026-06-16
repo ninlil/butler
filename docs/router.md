@@ -73,6 +73,8 @@ Requirement:
 - `[]byte`
 - `time.Time`
 - `time.Duration`
+- `[]string` (only for `from:"body"`; splits the body into lines)
+- `map[string]interface{}` (only for `from:"body"`)
 - `struct` or `*struct` (currently only for `from:"body"`)
 
 ### Tags
