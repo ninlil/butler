@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"reflect"
 	"sync"
@@ -115,10 +116,12 @@ type Router struct {
 	middlewares   []func(http.Handler) http.Handler
 
 	// runtime
-	router *http.ServeMux
-	routes []*Route
-	server *http.Server
-	mutex  sync.Mutex
+	router       *http.ServeMux
+	routes       []*Route
+	server       *http.Server
+	mutex        sync.Mutex
+	baseCtx      context.Context
+	baseCtxClose context.CancelFunc
 }
 
 func (rt *Route) init() error {
@@ -281,7 +284,18 @@ func (r *Router) Serve() error {
 
 	log.Info().Msgf("router: listening to port %s:%d%s", "", r.port, r.prefix)
 
-	r.server = &http.Server{Addr: fmt.Sprintf(":%d", r.port), Handler: r.router}
+	// baseCtx is the parent of every request's context.Context; canceling it on
+	// Shutdown lets long-lived handlers (e.g. streaming/SSE) notice immediately
+	// via r.Context().Done(), instead of only after they're forcibly closed.
+	r.baseCtx, r.baseCtxClose = context.WithCancel(context.Background())
+
+	r.server = &http.Server{
+		Addr:    fmt.Sprintf(":%d", r.port),
+		Handler: r.router,
+		BaseContext: func(net.Listener) context.Context {
+			return r.baseCtx
+		},
+	}
 	return r.server.ListenAndServe()
 }
 
@@ -294,6 +308,12 @@ func (r *Router) Shutdown() {
 		return
 	}
 	log.Trace().Msg("router: shutdown initiated...")
+
+	// cancel first so streaming/long-lived handlers watching r.Context().Done()
+	// stop right away, instead of stalling the graceful shutdown below.
+	if r.baseCtxClose != nil {
+		r.baseCtxClose()
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()

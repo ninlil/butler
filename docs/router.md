@@ -171,6 +171,11 @@ See [examples/sse](../examples/sse) for a runnable example.
 
 The router is implemented with a graceful shutdown method, allowing all running handlers to complete (within 2 minutes) before the server is terminated. New connections are not accepted during this phase.
 
+As soon as shutdown starts, the context passed to every in-flight request (and returned by
+`r.Context()`) is canceled, so long-lived handlers — like the streaming example above — should
+watch `r.Context().Done()` in their loop and return promptly instead of holding the connection
+open until the 2-minute grace period elapses.
+
 ### Manual shutdown
 
 To shut down a router manually, call the `router.Shutdown()` method.
