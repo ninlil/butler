@@ -25,6 +25,7 @@ func (r *Router) panicHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
+				// for streaming routes w is the raw writer, so ok is false and Reset() is skipped
 				if w2, ok := bufferedresponse.Get(w); ok {
 					w2.Reset()
 				}
@@ -94,4 +95,13 @@ func accessLogger(next http.Handler) http.Handler {
 	// Msg("")
 
 	// return nil
+}
+
+// streamingAccessLogger logs a single line before the handler runs, since
+// streaming responses have no final status/size/duration to report afterward.
+func streamingAccessLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hlog.FromRequest(r).Info().Bool("streaming", true).Msgf("%s %s", r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }

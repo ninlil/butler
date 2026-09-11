@@ -52,6 +52,9 @@ var routes = []router.Route{
 
 Path parameters use `{param}` (Go 1.22+ `net/http.ServeMux` pattern syntax).
 
+Set `Streaming: true` on a `Route` to opt out of response buffering for long-lived
+responses (SSE, chunked); see [docs/router.md](docs/router.md#streaming-responses-sse-chunked).
+
 ## Handler Signatures
 
 Return values and arguments may appear in any order. The framework uses reflection to wire them.

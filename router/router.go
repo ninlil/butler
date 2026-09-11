@@ -89,13 +89,14 @@ func (e errHandlerNotAFunc) Error() string {
 
 // Route contains the definition of a REST-API with method, path, handler and more
 type Route struct {
-	Name    string
-	Method  string
-	Path    string
-	Handler interface{}
-	fnType  reflect.Type
-	fnValue reflect.Value
-	isRaw   bool // if Handler is a regular http.HandlerFunc, then no wrapping is needed
+	Name      string
+	Method    string
+	Path      string
+	Handler   interface{}
+	Streaming bool
+	fnType    reflect.Type
+	fnValue   reflect.Value
+	isRaw     bool // if Handler is a regular http.HandlerFunc, then no wrapping is needed
 
 	router *Router
 }
@@ -151,6 +152,35 @@ func Serve(routes []Route, opts ...Option) error {
 // Shutdown does a graceful shutdown on the default router
 func Shutdown() {
 	defaultRouter.Shutdown()
+}
+
+// buildChain assembles the per-route middleware chain (response wrapping,
+// logging, panic recovery, user middlewares) and returns the final
+// http.Handler for the given route. Streaming routes skip response
+// buffering and use a pre-handler access-log line instead.
+func (r *Router) buildChain(route *Route) http.Handler {
+	chain := alice.New()
+	if !route.Streaming {
+		chain = chain.Append(wrapWriterMW)
+	}
+
+	chain = chain.Append(log.NewHandler())
+	chain = chain.Append(IDHandler())
+	if route.Streaming {
+		chain = chain.Append(streamingAccessLogger)
+	} else {
+		chain = chain.Append(accessLogger)
+	}
+	// chain = chain.Append(hlog.RemoteAddrHandler("ip"))
+	// chain = chain.Append(hlog.UserAgentHandler("user_agent"))
+	// chain = chain.Append(hlog.RefererHandler("referer"))
+	// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
+
+	chain = chain.Append(r.panicHandler)
+	for _, mw := range r.middlewares {
+		chain = chain.Append(alice.Constructor(mw))
+	}
+	return chain.ThenFunc(route.wrapHandler())
 }
 
 // New creates a custom Router using the supplied routes
@@ -229,21 +259,7 @@ func (r *Router) Serve() error {
 			haveHealty = true
 		}
 
-		chain := alice.New().Append(wrapWriterMW)
-
-		chain = chain.Append(log.NewHandler())
-		chain = chain.Append(IDHandler())
-		chain = chain.Append(accessLogger)
-		// chain = chain.Append(hlog.RemoteAddrHandler("ip"))
-		// chain = chain.Append(hlog.UserAgentHandler("user_agent"))
-		// chain = chain.Append(hlog.RefererHandler("referer"))
-		// chain = chain.Append(hlog.RequestIDHandler("req_id", "Request-Id"))
-
-		chain = chain.Append(r.panicHandler)
-		for _, mw := range r.middlewares {
-			chain = chain.Append(alice.Constructor(mw))
-		}
-		handler := chain.ThenFunc(route.wrapHandler())
+		handler := r.buildChain(route)
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 

@@ -50,14 +50,21 @@ func (rw *ResponseWriter) WriteHeader(status int) {
 	rw.status = status
 }
 
-// Flush sends all headers, status and body
+// Flush sends all headers, status and body, forwarding to the underlying
+// http.Flusher on every call (including repeated calls after the first).
 func (rw *ResponseWriter) Flush() {
 	if rw.sent {
+		if f, ok := rw.rw.(http.Flusher); ok {
+			f.Flush()
+		}
 		return
 	}
 	rw.rw.WriteHeader(rw.status)
 	_, _ = rw.rw.Write(rw.buffer.Bytes())
 	rw.sent = true
+	if f, ok := rw.rw.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // Reset the content

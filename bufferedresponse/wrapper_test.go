@@ -1,10 +1,39 @@
 package bufferedresponse
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+// fakeFlusher is a minimal http.ResponseWriter + http.Flusher that counts Flush() calls.
+type fakeFlusher struct {
+	header     http.Header
+	body       bytes.Buffer
+	status     int
+	flushCount int
+}
+
+func newFakeFlusher() *fakeFlusher {
+	return &fakeFlusher{header: make(http.Header)}
+}
+
+func (f *fakeFlusher) Header() http.Header {
+	return f.header
+}
+
+func (f *fakeFlusher) Write(buf []byte) (int, error) {
+	return f.body.Write(buf)
+}
+
+func (f *fakeFlusher) WriteHeader(status int) {
+	f.status = status
+}
+
+func (f *fakeFlusher) Flush() {
+	f.flushCount++
+}
 
 func TestWrap(t *testing.T) {
 	rec := httptest.NewRecorder()
@@ -79,22 +108,42 @@ func TestFlush(t *testing.T) {
 		}
 	})
 
-	t.Run("second flush is a no-op", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		rw := Wrap(rec)
+	t.Run("second flush forwards to underlying flusher", func(t *testing.T) {
+		fake := newFakeFlusher()
+		rw := Wrap(fake)
 		_, _ = rw.Write([]byte("data"))
 		rw.Flush()
 
-		// second flush should not write again
-		_, _ = rw.Write([]byte("more")) // goes directly to rec after flush
+		// second flush should forward to the underlying Flush(), not re-send the body
+		_, _ = rw.Write([]byte("more")) // goes directly to fake after flush
 		rw.Flush()
 
-		// rec body should contain "data" + "more" (Write after flush goes to underlying)
-		// but the second Flush call itself must not panic or duplicate data
-		if rec.Body.String() == "" {
-			t.Error("expected non-empty body after flush")
+		if fake.flushCount != 2 {
+			t.Errorf("expected underlying Flush() called twice, got %d", fake.flushCount)
+		}
+		if fake.body.String() != "datamore" {
+			t.Errorf("expected body %q, got %q", "datamore", fake.body.String())
 		}
 	})
+}
+
+func TestFlush_ForwardsToUnderlyingFlusherRepeatedly(t *testing.T) {
+	fake := newFakeFlusher()
+	rw := Wrap(fake)
+
+	_, _ = rw.Write([]byte("one"))
+	rw.Flush()
+	_, _ = rw.Write([]byte("two"))
+	rw.Flush()
+	_, _ = rw.Write([]byte("three"))
+	rw.Flush()
+
+	if fake.flushCount != 3 {
+		t.Errorf("expected underlying Flush() called 3 times, got %d", fake.flushCount)
+	}
+	if fake.body.String() != "onetwothree" {
+		t.Errorf("expected body %q, got %q", "onetwothree", fake.body.String())
+	}
 }
 
 func TestReset(t *testing.T) {

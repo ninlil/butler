@@ -1,15 +1,18 @@
 package router
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/justinas/alice"
-	"github.com/ninlil/butler/log"
+	"github.com/ninlil/butler/bufferedresponse"
+	zlog "github.com/rs/zerolog/log"
 )
 
 // buildTestHandler sets up a Router's ServeMux with routes and returns the http.Handler.
@@ -31,15 +34,7 @@ func buildTestHandler(t *testing.T, routes []Route) http.Handler {
 		} else {
 			route.Path = r.prefix + route.Path
 		}
-		chain := alice.New().Append(wrapWriterMW)
-		chain = chain.Append(log.NewHandler())
-		chain = chain.Append(IDHandler())
-		chain = chain.Append(accessLogger)
-		chain = chain.Append(r.panicHandler)
-		for _, mw := range r.middlewares {
-			chain = chain.Append(alice.Constructor(mw))
-		}
-		handler := chain.ThenFunc(route.wrapHandler())
+		handler := r.buildChain(route)
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router
@@ -64,15 +59,7 @@ func buildTestHandlerWithOpts(t *testing.T, routes []Route, extra ...Option) htt
 		} else {
 			route.Path = r.prefix + route.Path
 		}
-		chain := alice.New().Append(wrapWriterMW)
-		chain = chain.Append(log.NewHandler())
-		chain = chain.Append(IDHandler())
-		chain = chain.Append(accessLogger)
-		chain = chain.Append(r.panicHandler)
-		for _, mw := range r.middlewares {
-			chain = chain.Append(alice.Constructor(mw))
-		}
-		handler := chain.ThenFunc(route.wrapHandler())
+		handler := r.buildChain(route)
 		r.router.Handle(buildPattern(method, route.Path), handler)
 	}
 	return r.router
@@ -554,4 +541,194 @@ func TestPrefixWithWildcard(t *testing.T) {
 	if w.Code != 201 {
 		t.Errorf("status = %d, want 201 (wildcard under prefix should match)", w.Code)
 	}
+}
+
+// =============================================================================
+// Streaming route tests — verify Route.Streaming bypasses response buffering,
+// uses the pre-handler streaming access-log line, and recovers from panics.
+// =============================================================================
+
+func TestStreamingRoute_BypassesBufferedResponse(t *testing.T) {
+	var streamingRaw, normalWrapped bool
+
+	streamingHandler := func(w http.ResponseWriter, r *http.Request) {
+		_, ok := bufferedresponse.Get(w)
+		streamingRaw = !ok
+	}
+	normalHandler := func(w http.ResponseWriter, r *http.Request) {
+		_, ok := bufferedresponse.Get(w)
+		normalWrapped = ok
+	}
+
+	h := buildTestHandler(t, []Route{
+		{Name: "stream", Method: "GET", Path: "/stream", Handler: streamingHandler, Streaming: true},
+		{Name: "normal", Method: "GET", Path: "/normal", Handler: normalHandler},
+	})
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/stream", nil))
+	if !streamingRaw {
+		t.Error("expected streaming route handler to receive the raw writer (bufferedresponse.Get ok=false)")
+	}
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/normal", nil))
+	if !normalWrapped {
+		t.Error("expected normal route handler to receive the wrapped writer (bufferedresponse.Get ok=true)")
+	}
+}
+
+func TestStreamingRoute_FlushesIncrementally(t *testing.T) {
+	const chunkDelay = 200 * time.Millisecond
+	const perChunkTimeout = 450 * time.Millisecond // > chunkDelay, < total handler runtime (3*chunkDelay)
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			return
+		}
+		for i := range 3 {
+			fmt.Fprintf(w, "chunk-%d\n", i)
+			fl.Flush()
+			time.Sleep(chunkDelay)
+		}
+	}
+
+	h := buildTestHandler(t, []Route{
+		{Name: "stream", Method: "GET", Path: "/stream", Handler: handler, Streaming: true},
+	})
+
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/stream")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+
+	reader := bufio.NewReader(resp.Body)
+	for i := range 3 {
+		type readResult struct {
+			line string
+			err  error
+		}
+		ch := make(chan readResult, 1)
+		go func() {
+			line, err := reader.ReadString('\n')
+			ch <- readResult{line, err}
+		}()
+
+		select {
+		case res := <-ch:
+			if res.err != nil {
+				t.Fatalf("chunk %d: read error: %v", i, res.err)
+			}
+			want := fmt.Sprintf("chunk-%d\n", i)
+			if res.line != want {
+				t.Errorf("chunk %d = %q, want %q", i, res.line, want)
+			}
+		case <-time.After(perChunkTimeout):
+			t.Fatalf("chunk %d: timed out waiting for incremental flush", i)
+		}
+	}
+}
+
+func TestStreamingRoute_AccessLogSingleLineBeforeHandler(t *testing.T) {
+	orgLogger := zlog.Logger
+	buf := new(bytes.Buffer)
+	zlog.Logger = zlog.Output(buf)
+	defer func() { zlog.Logger = orgLogger }()
+
+	// the middleware chain runs synchronously, so by the time the handler executes,
+	// the streaming access-log line has already been written to buf.
+	var loggedBeforeHandler bool
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		loggedBeforeHandler = strings.Contains(buf.String(), `"streaming":true`)
+	}
+
+	h := buildTestHandler(t, []Route{
+		{Name: "stream", Method: "GET", Path: "/stream", Handler: handler, Streaming: true},
+	})
+	buf.Reset() // discard setup-time trace logs so only the request's log line remains
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/stream", nil))
+
+	if !loggedBeforeHandler {
+		t.Error("expected streaming access-log line to be written before the handler runs")
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly 1 log line, got %d: %q", len(lines), buf.String())
+	}
+}
+
+func TestNonStreamingRoute_AccessLogUnchanged(t *testing.T) {
+	orgLogger := zlog.Logger
+	buf := new(bytes.Buffer)
+	zlog.Logger = zlog.Output(buf)
+	defer func() { zlog.Logger = orgLogger }()
+
+	h := buildTestHandler(t, []Route{
+		{Name: "normal", Method: "GET", Path: "/normal", Handler: handlerReturnStatus},
+	})
+	buf.Reset() // discard setup-time trace logs so only the request's log line remains
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/normal", nil))
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly 1 log line, got %d: %q", len(lines), buf.String())
+	}
+	line := lines[0]
+	for _, field := range []string{`"status":`, `"size":`, `"duration":`} {
+		if !strings.Contains(line, field) {
+			t.Errorf("expected log line to contain %s, got %q", field, line)
+		}
+	}
+	if strings.Contains(line, `"streaming"`) {
+		t.Errorf("expected no streaming field in non-streaming access log, got %q", line)
+	}
+}
+
+func TestStreamingRoute_PanicRecovery(t *testing.T) {
+	t.Run("panics before writing any output", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			panic("boom")
+		}
+		h := buildTestHandler(t, []Route{
+			{Name: "stream-panic-early", Method: "GET", Path: "/stream-panic-early", Handler: handler, Streaming: true},
+		})
+
+		w := httptest.NewRecorder()
+		// the panic must be recovered inside panicHandler; nothing should escape ServeHTTP.
+		h.ServeHTTP(w, httptest.NewRequest("GET", "/stream-panic-early", nil))
+
+		// no output was sent yet, so panicHandler's WriteHeader(500) actually takes effect.
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+		}
+	})
+
+	t.Run("panics after writing partial output", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("partial"))
+			panic("boom")
+		}
+		h := buildTestHandler(t, []Route{
+			{Name: "stream-panic-partial", Method: "GET", Path: "/stream-panic-partial", Handler: handler, Streaming: true},
+		})
+
+		w := httptest.NewRecorder()
+		// the panic must be recovered inside panicHandler; nothing should escape ServeHTTP.
+		h.ServeHTTP(w, httptest.NewRequest("GET", "/stream-panic-partial", nil))
+
+		if w.Body.String() != "partial" {
+			t.Errorf("body = %q, want %q (partial output already flushed before the panic)", w.Body.String(), "partial")
+		}
+		// status was already committed by the first Write before the panic, so it stays 200;
+		// panicHandler's later WriteHeader(500) is a graceful no-op, matching real net/http semantics.
+		if w.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+	})
 }
