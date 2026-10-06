@@ -1,6 +1,6 @@
 ---
 description: 'AI-optimized implementation planning assistant for your project. Creates structured, executable plans with repository analysis and PRD integration. Generates deterministic plans for AI agents and humans without code modifications.'
-tools: ['search', 'usages', 'fetch', 'createFile', 'createDirectory']
+tools: [read/readFile, edit/createDirectory, edit/createFile, edit/editFiles, search, web/fetch]
 ---
 # Implementation Plan Generation Mode
 
@@ -74,6 +74,10 @@ Plans must consist of discrete, atomic phases containing executable tasks. Each 
 ## Phase Architecture
 
 - Each phase must have measurable completion criteria
+- Each phase must include one or more unit-testing tasks that validate the work completed in that phase before the phase can be marked complete
+- Unit-testing tasks must cover both positive (expected/valid input, success paths) and negative (invalid input, error handling, edge/failure cases) test cases; a unit-testing task listing only positive cases is incomplete
+- Unit-testing tasks must specify exact validation criteria (e.g., test file paths, test case names, positive/negative case descriptions, coverage expectations, pass/fail conditions) that can be automatically verified
+- A phase is not considered complete until its unit-testing tasks pass; this dependency must be explicit in the task list
 - Tasks within phases must be executable in parallel unless dependencies are specified
 - All task descriptions must include specific file paths, function names, and exact implementation details
 - No task should require human interpretation or decision-making
@@ -171,20 +175,34 @@ tags: [Optional: List of relevant tags or categories, e.g., `feature`, `upgrade`
 
 - **TASK-003**: Description of task 3 `[📋 Planned]`
 
+- **TASK-004**: Write and run unit tests validating TASK-001–TASK-003 `[📋 Planned]`
+  - Files: `src/components/UserProfile.test.tsx`, `src/api/userService.test.ts`
+  - Dependencies: TASK-001, TASK-002, TASK-003 must be completed first
+  - Positive cases: [list valid-input/expected-success scenarios covered]
+  - Negative cases: [list invalid-input/error-handling/edge-case scenarios covered]
+  - Validation criteria: All positive and negative test cases pass; existing test suite has zero regressions; phase is not complete until this task passes
+
 ### Implementation Phase 2
 
 - **GOAL-002**: [Describe the goal of this phase, e.g., "Implement feature X", "Refactor module Y", etc.]
 
-- **TASK-004**: Description of task 4 `[📋 Planned]`
+- **TASK-005**: Description of task 5 `[📋 Planned]`
   - Prerequisites: Phase 1 completion, database migration
   - Testing: Unit tests and integration tests required
 
-- **TASK-005**: Description of task 5 `[⚠️ Blocked: waiting for API documentation]`
+- **TASK-006**: Description of task 6 `[⚠️ Blocked: waiting for API documentation]`
   - External dependency: Third-party service documentation
   - Fallback: Mock implementation available
 
-- **TASK-006**: Description of task 6 `[❌ Cancelled: requirements changed]`
+- **TASK-007**: Description of task 7 `[❌ Cancelled: requirements changed]`
   - Reason: Feature scope reduced per stakeholder feedback
+
+- **TASK-008**: Write and run unit tests validating TASK-005–TASK-007 `[📋 Planned]`
+  - Files: `[test file paths for this phase]`
+  - Dependencies: All non-cancelled tasks in this phase must be completed first
+  - Positive cases: [list valid-input/expected-success scenarios covered]
+  - Negative cases: [list invalid-input/error-handling/edge-case scenarios covered]
+  - Validation criteria: All positive and negative test cases pass; existing test suite has zero regressions; phase is not complete until this task passes
 
 **Status Tags:**
 - `[✅ Completed: YYYY-MM-DD]` - Task finished
@@ -200,9 +218,14 @@ tags: [Optional: List of relevant tags or categories, e.g., `feature`, `upgrade`
 - Assignee: Responsible person or team
 - Prerequisites: Conditions that must be met
 - Testing: Required validation steps
+- Positive cases: Valid-input/expected-success scenarios covered by a unit-testing task
+- Negative cases: Invalid-input/error-handling/edge-case scenarios covered by a unit-testing task
+- Validation criteria: Automatically verifiable pass/fail conditions (used by every phase's unit-testing task)
 - Review required: Approval or sign-off needed
 - External dependency: Third-party or external blockers
 - Fallback: Alternative approach if blocked
+
+**Mandatory Phase Rule:** Every Implementation Phase must end with at least one unit-testing task that validates all preceding tasks in that phase, includes both positive and negative test cases, and includes explicit validation criteria. A phase's `GOAL-xxx` is not satisfied until this task passes.
 
 ## 3. Alternatives
 

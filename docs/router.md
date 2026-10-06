@@ -167,9 +167,87 @@ final status/size/duration to report.
 
 See [examples/sse](../examples/sse) for a runnable example.
 
+## HTTPS
+
+TLS is enabled through options. The number of listeners is decided by `WithPort` vs `WithPorts`;
+a TLS option only decides the protocol.
+
+| Mode         | Options                                          | Listeners                      |
+|--------------|--------------------------------------------------|--------------------------------|
+| HTTP only    | `WithPort(p)`                                    | plain on `p`                   |
+| HTTPS only   | `WithPort(p)` + `WithTLS` / `WithTLSConfig`      | TLS on `p`                     |
+| HTTP + HTTPS | `WithPorts(h, s)` + `WithTLS` / `WithTLSConfig`  | plain on `h`, TLS on `s`       |
+
+`WithPorts` without a TLS option makes `router.New` return `ErrorTLSNotConfigured`. Both ports must be
+greater than 0 and differ (`ErrorInvalidPort`, `ErrorPortConflict`). `WithPort` and `WithPorts` write the
+same settings, so the last one given wins.
+
+```go
+// HTTPS only on 8443
+router.Serve(routes, router.WithPort(8443), router.WithTLS("tls.crt", "tls.key"))
+
+// HTTP on 10000 and HTTPS on 10443
+router.Serve(routes,
+    router.WithPorts(10000, 10443), // httpPort, httpsPort
+    router.WithTLS("tls.crt", "tls.key"),
+)
+```
+
+> **Note:** `WithPort` combined with a TLS option means that port is HTTPS. Adding a TLS option to an
+> existing `WithPort` service therefore turns its port into HTTPS and breaks Kubernetes probes that use
+> `scheme: HTTP`. Use `WithPorts` when migrating, which keeps a plain port for the probes.
+
+The health and ready probes are served on every listener.
+
+### Custom TLS configuration
+
+`WithTLSConfig` takes a full `*tls.Config` (mTLS, cipher policy, `autocert`, ...). It must contain
+`Certificates`, `GetCertificate` or `GetConfigForClient`, otherwise `New` returns `ErrorInvalidTLS`.
+`WithTLS` and `WithTLSConfig` replace each other; the last one given wins.
+
+```go
+cfg := &tls.Config{
+    MinVersion: tls.VersionTLS13,
+    ClientAuth: tls.RequireAndVerifyClientCert,
+    ClientCAs:  pool,
+    Certificates: []tls.Certificate{cert},
+}
+router.Serve(routes, router.WithPorts(10000, 10443), router.WithTLSConfig(cfg))
+```
+
+With `WithTLS` the router builds the config itself, with TLS 1.2 as the minimum version. The key pair is
+loaded when the router is created, so a missing or invalid file is returned as an error from `router.Serve`
+before anything listens. HSTS is not added automatically; add it with `WithMiddleware`.
+
+### Certificate reload
+
+With `WithTLS`, the certificate and key files are re-read when either file's modification time changes.
+The check runs at most every 30 seconds, on a TLS handshake. If the new files cannot be read or do not
+form a valid pair, an error is logged and the previous certificate stays in use.
+
+### Redirecting HTTP to HTTPS
+
+`WithHTTPSRedirect()` (requires `WithPorts`, otherwise `ErrorRedirectNeedsPorts`) makes the plain listener
+answer every request with a `308 Permanent Redirect` to the HTTPS URL, built from the request's `Host`
+and URI. The health and ready probe paths are not redirected.
+
+```go
+router.Serve(routes,
+    router.WithPorts(10000, 10443),
+    router.WithTLS("tls.crt", "tls.key"),
+    router.WithHTTPSRedirect(),
+)
+```
+
+### Access log
+
+Access-log lines contain a `scheme` field, `"https"` for TLS requests and `"http"` otherwise.
+
+See [examples/https](../examples/https) for a runnable example.
+
 ## Shutdown
 
-The router is implemented with a graceful shutdown method, allowing all running handlers to complete (within 2 minutes) before the server is terminated. New connections are not accepted during this phase.
+The router is implemented with a graceful shutdown method, allowing all running handlers to complete (within 2 minutes) before the server is terminated. New connections are not accepted during this phase. All listeners (HTTP and HTTPS) are shut down together.
 
 As soon as shutdown starts, the context passed to every in-flight request (and returned by
 `r.Context()`) is canceled, so long-lived handlers — like the streaming example above — should
@@ -190,3 +268,7 @@ To shut down a router manually, call the `router.Shutdown()` method.
 > ```
 >
 > Otherwise you will block yourself because of the graceful shutdown.
+
+### Router names and runtime lifetime
+
+Router names (`WithName`) must be unique for the lifetime of the process; a name is not released when its router stops, and `router.New` returns `ErrRouterDuplicateName` if it is reused. When the last running router stops, the runtime is closed and later routers are not covered by it. Butler assumes one router set per process; tests starting several routers should use a unique name each and keep one router alive.

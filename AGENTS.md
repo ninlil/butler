@@ -136,6 +136,10 @@ workers.OnDone = workers.ReadyOnDone     // keep serving, but readiness probe fa
 ```go
 router.Serve(routes,
     router.WithPort(10000),
+    router.WithPorts(10000, 10443),        // plain on 10000, TLS on 10443 (needs a TLS option)
+    router.WithTLS("tls.crt", "tls.key"),   // enable TLS from files (reloaded on change)
+    router.WithTLSConfig(cfg),             // enable TLS with a custom *tls.Config
+    router.WithHTTPSRedirect(),            // 308 plain -> HTTPS (needs WithPorts)
     router.WithPrefix("/api"),
     router.WithName("main"),
     router.WithExposedErrors(),   // include panic message in response body

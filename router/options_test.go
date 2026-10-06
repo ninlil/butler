@@ -53,6 +53,62 @@ func TestWithPort(t *testing.T) {
 	})
 }
 
+func TestWithPortResetsHTTPSPort(t *testing.T) {
+	r := &Router{}
+	if err := WithPorts(1, 2)(r); err != nil {
+		t.Fatal(err)
+	}
+	if err := WithPort(3)(r); err != nil {
+		t.Fatal(err)
+	}
+	if r.port != 3 || r.httpsPort != 0 {
+		t.Errorf("port=%d httpsPort=%d, want 3 and 0", r.port, r.httpsPort)
+	}
+}
+
+func TestWithPorts(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		r := &Router{}
+		if err := WithPorts(1, 2)(r); err != nil {
+			t.Fatal(err)
+		}
+		if r.port != 1 || r.httpsPort != 2 {
+			t.Errorf("port=%d httpsPort=%d, want 1 and 2", r.port, r.httpsPort)
+		}
+	})
+
+	t.Run("overrides WithPort", func(t *testing.T) {
+		r := &Router{}
+		if err := WithPort(3)(r); err != nil {
+			t.Fatal(err)
+		}
+		if err := WithPorts(1, 2)(r); err != nil {
+			t.Fatal(err)
+		}
+		if r.port != 1 || r.httpsPort != 2 {
+			t.Errorf("port=%d httpsPort=%d, want 1 and 2", r.port, r.httpsPort)
+		}
+	})
+
+	tests := []struct {
+		name        string
+		http, https int
+		want        error
+	}{
+		{"zero http", 0, 1, ErrorInvalidPort},
+		{"zero https", 1, 0, ErrorInvalidPort},
+		{"negative http", -1, 1, ErrorInvalidPort},
+		{"equal", 5, 5, ErrorPortConflict},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := WithPorts(tc.http, tc.https)(&Router{}); !errors.Is(err, tc.want) {
+				t.Errorf("got %v, want %v", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestWithPrefix(t *testing.T) {
 	t.Run("valid prefix", func(t *testing.T) {
 		r := &Router{}

@@ -35,6 +35,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - Automatic log-support with json to pipe/stream and pretty-printed to console/tty
 - Automatic `204 'No Content'` on empty result
 - Middleware support via `WithMiddleware` — compatible with any `func(http.Handler) http.Handler` middleware
+- HTTPS (TLS) in HTTPS-only or HTTP + HTTPS mode, with certificate reloading
 
 ### Workers
 
@@ -57,6 +58,7 @@ With all that in mind (and more) I'm building this framework: **the Butler** - _
 - [File-serving](examples/files)
 - [Regex validation](examples/regex)
 - [Middleware](examples/middleware)
+- [HTTPS](examples/https)
 
 ### HelloWorld
 

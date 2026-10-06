@@ -1,6 +1,7 @@
 package router
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/url"
 )
@@ -35,13 +36,63 @@ func WithStrictSlash(flag bool) Option {
 	}
 }
 
-// WithPort tells what port to listen on for requests
+// WithPort tells what port to listen on for requests; a TLS option makes this port HTTPS
 func WithPort(port int) Option {
 	return func(r *Router) error {
 		if port <= 0 {
 			return ErrorInvalidPort
 		}
 		r.port = port
+		r.httpsPort = 0
+		return nil
+	}
+}
+
+// WithPorts listens plain on httpPort and TLS on httpsPort (requires WithTLS or WithTLSConfig)
+func WithPorts(httpPort, httpsPort int) Option {
+	return func(r *Router) error {
+		if httpPort <= 0 || httpsPort <= 0 {
+			return ErrorInvalidPort
+		}
+		if httpPort == httpsPort {
+			return ErrorPortConflict
+		}
+		r.port = httpPort
+		r.httpsPort = httpsPort
+		return nil
+	}
+}
+
+// WithTLS serves TLS using the certificate and key files
+func WithTLS(certFile, keyFile string) Option {
+	return func(r *Router) error {
+		if certFile == "" || keyFile == "" {
+			return ErrorInvalidTLS
+		}
+		r.tlsCertFile = certFile
+		r.tlsKeyFile = keyFile
+		r.tlsConfig = nil
+		return nil
+	}
+}
+
+// WithTLSConfig serves TLS using a caller-supplied configuration
+func WithTLSConfig(cfg *tls.Config) Option {
+	return func(r *Router) error {
+		if cfg == nil {
+			return ErrorInvalidTLS
+		}
+		r.tlsConfig = cfg
+		r.tlsCertFile = ""
+		r.tlsKeyFile = ""
+		return nil
+	}
+}
+
+// WithHTTPSRedirect redirects plain requests to HTTPS (requires WithPorts)
+func WithHTTPSRedirect() Option {
+	return func(r *Router) error {
+		r.httpsRedirect = true
 		return nil
 	}
 }
@@ -120,6 +171,10 @@ const (
 	ErrorRequireLeadingSlash Error = 1
 	ErrorNotValidURL         Error = 2
 	ErrorInvalidPort         Error = 3
+	ErrorPortConflict        Error = 4
+	ErrorTLSNotConfigured    Error = 5
+	ErrorRedirectNeedsPorts  Error = 6
+	ErrorInvalidTLS          Error = 7
 )
 
 func (err Error) Error() string {
@@ -130,6 +185,14 @@ func (err Error) Error() string {
 		return "not a valid url path"
 	case ErrorInvalidPort:
 		return "invalid port"
+	case ErrorPortConflict:
+		return "http and https ports must differ"
+	case ErrorTLSNotConfigured:
+		return "https port requires a TLS option (WithTLS or WithTLSConfig)"
+	case ErrorRedirectNeedsPorts:
+		return "WithHTTPSRedirect requires WithPorts"
+	case ErrorInvalidTLS:
+		return "invalid TLS configuration"
 	}
 	return "unknown router error"
 }

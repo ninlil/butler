@@ -1,0 +1,14 @@
+### MODE=https (HTTPS only)
+GET https://localhost:8443/hello
+
+### MODE=both (HTTP and HTTPS)
+GET http://localhost:10000/hello
+
+###
+GET https://localhost:10443/hello
+
+### MODE=redirect (plain port answers 308, probes are not redirected)
+GET http://localhost:10000/hello
+
+###
+GET http://localhost:10000/healthz

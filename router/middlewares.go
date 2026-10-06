@@ -51,6 +51,13 @@ func (r *Router) panicHandler(next http.Handler) http.Handler {
 	})
 }
 
+func requestScheme(r *http.Request) string {
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
+}
+
 func accessLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w2, _ := bufferedresponse.Get(w)
@@ -75,6 +82,7 @@ func accessLogger(next http.Handler) http.Handler {
 		e.Dur("duration", dur)
 		e.Int("status", w2.Status())
 		e.Int("size", w2.Size())
+		e.Str("scheme", requestScheme(r))
 
 		// 'chi' doesn't have a way to get the route name
 		// if route != nil {
@@ -101,7 +109,7 @@ func accessLogger(next http.Handler) http.Handler {
 // streaming responses have no final status/size/duration to report afterward.
 func streamingAccessLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hlog.FromRequest(r).Info().Bool("streaming", true).Msgf("%s %s", r.Method, r.URL.Path)
+		hlog.FromRequest(r).Info().Bool("streaming", true).Str("scheme", requestScheme(r)).Msgf("%s %s", r.Method, r.URL.Path)
 		next.ServeHTTP(w, r)
 	})
 }

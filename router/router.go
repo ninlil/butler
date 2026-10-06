@@ -2,9 +2,9 @@ package router
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"reflect"
 	"sync"
@@ -32,6 +32,7 @@ var (
 )
 
 type runningData struct {
+	mu      sync.Mutex
 	routers map[string]*Router
 	wg      *sync.WaitGroup
 }
@@ -39,6 +40,8 @@ type runningData struct {
 var running = new(runningData)
 
 func (run *runningData) addRouter(r *Router) error {
+	run.mu.Lock()
+	defer run.mu.Unlock()
 
 	if _, duplicate := run.routers[r.name]; duplicate {
 		return ErrRouterDuplicateName
@@ -56,9 +59,10 @@ func (run *runningData) addRouter(r *Router) error {
 	run.wg.Add(1)
 
 	if first {
+		wg := run.wg
 		go func() {
 			log.Trace().Msg("router: waiting for running router(s)")
-			run.wg.Wait()
+			wg.Wait()
 			log.Trace().Msg("router: all routers have stopped.. stopping runtime")
 			runtime.Close()
 		}()
@@ -69,17 +73,23 @@ func (run *runningData) addRouter(r *Router) error {
 
 func (run *runningData) Done(name string) {
 	log.Trace().Msgf("router: [%s] is done", name)
-	if run.wg == nil {
+	run.mu.Lock()
+	wg := run.wg
+	run.mu.Unlock()
+	if wg == nil {
 		return
 	}
-	run.wg.Done()
+	wg.Done()
 }
 
 func (run *runningData) Wait() {
-	if run.wg == nil {
+	run.mu.Lock()
+	wg := run.wg
+	run.mu.Unlock()
+	if wg == nil {
 		return
 	}
-	run.wg.Wait()
+	wg.Wait()
 }
 
 type errHandlerNotAFunc Route
@@ -108,6 +118,11 @@ type Router struct {
 	name          string
 	strictSlash   bool
 	port          int
+	httpsPort     int
+	tlsCertFile   string
+	tlsKeyFile    string
+	tlsConfig     *tls.Config
+	httpsRedirect bool
 	healthPath    string
 	readyPath     string
 	prefix        string
@@ -118,7 +133,7 @@ type Router struct {
 	// runtime
 	router       *http.ServeMux
 	routes       []*Route
-	server       *http.Server
+	listeners    []*listener
 	mutex        sync.Mutex
 	baseCtx      context.Context
 	baseCtxClose context.CancelFunc
@@ -205,6 +220,16 @@ func New(routes []Route, opts ...Option) (*Router, error) {
 		router.name = "default"
 	}
 
+	if err := router.resolveTLS(); err != nil {
+		return nil, err
+	}
+	if router.httpsPort > 0 && !router.hasTLS() {
+		return nil, ErrorTLSNotConfigured
+	}
+	if router.httpsRedirect && router.httpsPort == 0 {
+		return nil, ErrorRedirectNeedsPorts
+	}
+
 	router.router = http.NewServeMux()
 
 	for i := range routes {
@@ -230,10 +255,41 @@ func (r *Router) goServe() {
 
 // Serve starts the http-server on the router
 func (r *Router) Serve() error {
-	if r.server != nil {
+	r.mutex.Lock()
+	if r.listeners != nil {
+		r.mutex.Unlock()
 		return ErrRouterAlreadyRunning
 	}
 
+	r.registerRoutes()
+
+	if err := running.addRouter(r); err != nil {
+		r.mutex.Unlock()
+		return err
+	}
+	defer running.Done(r.name)
+
+	runtime.OnClose("router_"+r.name, r.Shutdown)
+
+	// baseCtx is the parent of every request's context.Context; canceling it on
+	// Shutdown lets long-lived handlers (e.g. streaming/SSE) notice immediately
+	// via r.Context().Done(), instead of only after they're forcibly closed.
+	r.baseCtx, r.baseCtxClose = context.WithCancel(context.Background())
+
+	ls := r.buildListeners()
+	if err := r.bind(ls); err != nil {
+		r.baseCtxClose()
+		r.mutex.Unlock()
+		return err
+	}
+	r.listeners = ls
+	r.mutex.Unlock()
+
+	r.logListening(ls)
+	return r.run(ls)
+}
+
+func (r *Router) registerRoutes() {
 	var haveReady bool
 	var haveHealty bool
 
@@ -274,29 +330,6 @@ func (r *Router) Serve() error {
 		// log.Trace().Msg("router: adding /readyz")
 		r.router.Handle("GET "+r.readyPath, http.HandlerFunc(readyProbe))
 	}
-
-	if err := running.addRouter(r); err != nil {
-		return err
-	}
-	defer running.Done(r.name)
-
-	runtime.OnClose("router_"+r.name, r.Shutdown)
-
-	log.Info().Msgf("router: listening to port %s:%d%s", "", r.port, r.prefix)
-
-	// baseCtx is the parent of every request's context.Context; canceling it on
-	// Shutdown lets long-lived handlers (e.g. streaming/SSE) notice immediately
-	// via r.Context().Done(), instead of only after they're forcibly closed.
-	r.baseCtx, r.baseCtxClose = context.WithCancel(context.Background())
-
-	r.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", r.port),
-		Handler: r.router,
-		BaseContext: func(net.Listener) context.Context {
-			return r.baseCtx
-		},
-	}
-	return r.server.ListenAndServe()
 }
 
 // Shutdown does a graceful shutdown of the router
@@ -304,25 +337,30 @@ func (r *Router) Shutdown() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if r.server == nil {
+	if len(r.listeners) == 0 {
 		return
 	}
 	log.Trace().Msg("router: shutdown initiated...")
 
 	// cancel first so streaming/long-lived handlers watching r.Context().Done()
 	// stop right away, instead of stalling the graceful shutdown below.
-	if r.baseCtxClose != nil {
-		r.baseCtxClose()
-	}
+	r.baseCtxClose()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	err := r.server.Shutdown(ctx)
-	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		log.Error().Msgf("router: shutdown-error: %v", err)
+	var wg sync.WaitGroup
+	for _, l := range r.listeners {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := l.server.Shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error().Msgf("router: shutdown-error (%s): %v", l.name, err)
+			}
+		}()
 	}
-	r.server = nil
+	wg.Wait()
+	r.listeners = nil
 	log.Trace().Msg("router: shutdown complete")
 }
 
